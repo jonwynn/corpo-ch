@@ -17,7 +17,7 @@ This fork adds a read-only live match viewer for tournament staff on the existin
 
 The explicit CORP Cup profile uses four opening ban/save actions, higher-seed first pick and subsequent loser picks. The website and bot share validated recorded state; continuous in-song statistics have no verified data source. Native browser refresh retains the last valid result during temporary failures and rechecks staff access on every request.
 
-The implementation has isolated tests and a local fixture preview. Five native MySQL checks also pass on the prepared local test instance. It is **not deployed**. Viewer, polling and MySQL verification switches default off. Deployment-specific database checks, live OAuth/Discord/provider checks and final human visual acceptance remain rollout gates. Existing overlay and non-CORP rule paths remain available.
+The implementation has isolated tests and a local fixture preview. Eight native MySQL checks, including OAuth concurrency, also pass on the prepared local test instance. It is **not deployed**. Viewer, polling and MySQL verification switches default off. Deployment-specific database checks, live OAuth/Discord/provider checks and final human visual acceptance remain rollout gates. Existing overlay and non-CORP rule paths remain available.
 
 ## Links
 

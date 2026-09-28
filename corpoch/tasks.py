@@ -164,14 +164,14 @@ def chart_songini_import(chart_id, *kargs, **kwargs):
 
 @app.task
 def update_oauth_tokens():
-	close_old_connections()
-	print("OAUTH TOKENS: Refreshing Discord OAuth tokens")
-	tokens = DiscordToken.objects.all()
-	for token in tokens:
-		try:
-			token.login()
-			token.update_code()
-			token.save()
-		except DiscordToken.AuthError as e:
-			print(f"OAUTH TOKENS: Deleting token for user {token.user.global_name} - {e}")
-			token.delete()
+    close_old_connections()
+    print("OAUTH TOKENS: Refreshing Discord OAuth tokens")
+    tokens = DiscordToken.objects.all()
+    for token in tokens:
+        try:
+            token.login()
+            token.update_code()
+        except DiscordToken.InvalidGrantError:
+            print(f"OAUTH TOKENS: Removed revoked or expired credentials for token {token.pk}")
+        except DiscordToken.AuthError:
+            print(f"OAUTH TOKENS: Refresh deferred for token {token.pk}; credentials retained")

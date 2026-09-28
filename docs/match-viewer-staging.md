@@ -94,42 +94,37 @@ The existing exporter creates its named tabs when first used, including Match Da
 
 ## 3. Check that the files are ready
 
-Paste this block into **Windows PowerShell** after saving both credentials and the Google key. Estimated duration: **1–3 seconds**; no GPU. It checks local file contents without printing tokens or the private key. It does not verify credentials with Discord or Google, identify the bot behind a token, or confirm spreadsheet sharing.
+Paste this block into **Windows PowerShell**. Estimated duration: **1–3 seconds** with the prepared Python environment; no GPU. The preflight reads the private inventory, validates its resource IDs and local file paths, and reports all missing credential inputs. It does not print tokens or private keys, load application settings, write files, or contact any service. It cannot verify the bot behind a token or spreadsheet sharing.
 
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
     Set-Location -LiteralPath 'C:\git\corpo-ch'
     $staging_root = Join-Path $env:USERPROFILE 'CorpoCH\staging'
-    try {
-        $credential_text = Get-Content -LiteralPath (Join-Path $staging_root 'dev-credentials.env') -Raw
-        foreach ($field in @('BOT_TOKEN', 'BOT_SECRET')) {
-            if ($credential_text -notmatch ('(?m)^' + $field + '="[^"\r\n\s]+"\s*$')) {
-                throw ('Fill ' + $field + ' between its quotes in Notepad++, save, and retry.')
-            }
-        }
-        $google_file = Join-Path $staging_root 'google-service-account.json'
-        if (-not (Test-Path -LiteralPath $google_file -PathType Leaf)) {
-            throw 'The Google service-account JSON is missing. Complete step 2.'
-        }
-        try {
-            $key = Get-Content -LiteralPath $google_file -Raw | ConvertFrom-Json
-        } catch {
-            throw 'The private Google key could not be read as JSON. Its contents were not displayed.'
-        }
-        if ($key.type -ne 'service_account' -or -not $key.client_email -or -not $key.private_key) {
-            throw 'The private JSON is not a complete service-account key.'
-        }
-        Write-Host 'PASS: Local credential fields and Google key structure are present.' -ForegroundColor Green
-        Write-Host ('Confirm test-sheet Editor access for: ' + $key.client_email)
-        Write-Host 'No service connection, bot startup or export was performed.'
-    } finally {
-        Remove-Variable credential_text, key -ErrorAction SilentlyContinue
+    $viewer_branch = git branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
+        throw 'This folder is not on jons-tree-branch. Stop here.'
+    }
+    .\.venv\Scripts\python.exe -B -m tests.staging_preflight --resources (Join-Path $staging_root 'staging-resources.json')
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Staging inputs are not ready. Complete the listed items and run this block again.'
     }
 }
 ```
 
-When this passes, report **“Credentials saved; test sheet shared.”** Do not paste the files. If something fails, send only the error message after checking it contains no credentials.
+Inventory validity and credential readiness are separate results. A valid inventory can still produce `NOT READY` for blank Discord fields or a missing Google key. Exit code `0` means the local inputs passed; code `2` means something is missing or invalid. Neither result starts an application or grants access to the destinations.
+
+When the full check passes and sheet sharing is complete, report **“Credentials saved; test sheet shared.”** Do not paste the files. If something fails, send only the error message after checking it contains no credentials.
+
+## Login changes available for staging
+
+Discord login begins at the local `/auth/start` route. It binds a short-lived authorization attempt to the browser session and verifies the callback before exchanging its code. The existing `/auth` callback address stays in use. Restart login from the website after upgrading; an older authorization link without the new state value is rejected.
+
+The login flow uses Django's database session backend and existing session table, with no new migration. Expired auxiliary login sessions are removed by the normal session cleanup procedure. Other session backends require separate support and verification before using this flow. The configured authorization URL must use Discord's HTTPS authorization endpoint and match the configured application ID and redirect URI.
+
+Discord requests now have connection/read timeouts and sanitized failure messages. Expired credentials are refreshed before requesting identity or guild data; temporary failures leave stored credentials available for a later attempt. Disabled accounts cannot sign in or restore an authenticated session. These behaviors are covered by isolated tests; actual consent, callback registration, service availability and account permissions still need the controlled login pilot.
+
+Browser and scheduled renewal coordinate on the same token row. Renewal holds that row while waiting for Discord, with 5-second connection and 15-second read timeouts; these are not a total request deadline. Match rows are not locked by this operation. The native MySQL tests verify the controlled overlap cases with mocked HTTP; the pilot must also check login latency and database timeout behavior under its own settings.
 
 ## Work required before service testing
 
@@ -137,8 +132,8 @@ Credential preparation is the current manual checkpoint. The following implement
 
 - A fresh staging database and media directory, an explicit local MySQL port, and a separate Redis/broker environment. The disposable MySQL checker is not a persistent staging installation. Do not copy the production database or reuse its queues.
 - Enforced development application, guild, channel and spreadsheet destinations. `HOME_GUILD_ID` alone does not restrict bot activity. Normal startup restores stored matches and may synchronize commands; workers can publish stored submissions.
-- Session-bound OAuth `state` validation before live staff login, plus bounded request/error handling and expiry/recovery checks. The current isolated fixes cover missing or rejected login data; they do not establish this full login boundary.
+- Live verification of the new session-bound OAuth flow, expiry recovery and failure behavior against the development application. Isolated tests do not establish remote credential acceptance.
 - Coordination with the development bot's owner before starting another instance, a development referee-role ID and test accounts, and registration of the exact staging OAuth callback.
 - One explicit export to the test spreadsheet, with output inspected before any retry. Existing match and ban exports use separate requests; partial failure can leave output that a blind retry duplicates. Keep scheduled jobs off during the first export.
 
-Do not use the README's normal startup commands to bypass this checkpoint. Continue with the [rollout checklist](match-viewer-rollout.md) after the isolated staging setup and login changes are reviewed.
+Do not use the README's normal startup commands to bypass this checkpoint. Continue with the [rollout checklist](match-viewer-rollout.md) after the isolated staging setup is reviewed.

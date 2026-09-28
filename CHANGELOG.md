@@ -4,6 +4,7 @@
 
 ### Added
 
+- An offline staging preflight that reads an explicit private resource inventory, checks local credential inputs without displaying secrets, and reports missing fields separately from valid resource configuration. It does not start or contact services.
 - A staff-only website viewer contract covering recorded scores, stable player slots, bans and saves, chart selections, corrections, access and refresh behavior.
 - Independent match-state fixtures for the approved blue-and-coral layout and later integration checks.
 - CORP Cup rule examples for group/playoff targets, four opening ban/save actions, effective-ban counts and saved-song restrictions at match tiebreakers.
@@ -20,13 +21,17 @@
 - Native browser refresh with one request at a time, cancellation, pinned identity checks, stale/retry handling, preserved details and access-loss clearing. Existing overlay refresh is unchanged.
 - Dark, light and system appearance choices, saved theme selection, narrow layouts and forced-color styles.
 - A loopback fixture preview with simulated updates/failures, read-side regression tests, 12 refresh-controller tests and a staged rollout/rollback checklist.
-- An opt-in local MySQL checker that creates its own disposable database for five concurrency/access tests. Thirteen no-server checks cover its configuration and cleanup boundaries; deployment-specific database verification remains a rollout gate.
-- A PowerShell command for the prepared private MySQL test instance. It verifies the branch, paths and checksums, refuses occupied ports, runs the five checks, stops only its own server and restores previous session variables. Credentials stay Windows-encrypted outside the repository.
+- An opt-in local MySQL checker that creates its own disposable database for eight concurrency/access tests. Thirteen no-server checks cover its configuration and cleanup boundaries; deployment-specific database verification remains a rollout gate.
+- A PowerShell command for the prepared private MySQL test instance. It verifies the branch, paths and checksums, refuses occupied ports, runs the eight checks, stops only its own server and restores previous session variables. Credentials stay Windows-encrypted outside the repository.
 
 ### Changed
 
-- Added private development credential preparation instructions for Notepad++, a downloaded Google service-account key and test-sheet sharing. Resource IDs and credentials remain outside the repository; isolated service configuration and session-bound OAuth validation remain required before live testing.
-- Discord login now recovers from missing callback/session data, rejected OAuth responses and deleted stored tokens without undefined-variable errors. Successful callbacks store the token before updating OAuth session values. This change does not add OAuth state validation, transport recovery or automatic token refresh.
+- Discord login starts locally with an expiring, browser-bound authorization attempt. Callbacks consume the attempt before contacting Discord; missing, mismatched, expired and replayed state return a manual retry page. The flow uses the existing database session table, with no new migration.
+- Discord token requests have connection/read timeouts, no automatic HTTP redirects and sanitized errors. Browser requests renew expired tokens; scheduled refresh retains credentials after temporary or configuration failures and removes only an explicitly invalid grant.
+- Token renewal and callback writes coordinate on the stored token row. Competing browser and scheduled refreshes reload the latest credentials before deciding whether another exchange is needed.
+- Discord authentication rejects disabled accounts and no longer suppresses database failures while returning a user. Login recovery preserves unrelated session values and avoids automatic authorization loops.
+- Added private development credential preparation instructions for Notepad++, a downloaded Google service-account key and test-sheet sharing. Resource IDs and credentials remain outside the repository; isolated service configuration and actual OAuth verification remain required before rollout.
+- Discord login recovers from missing callback/session data, rejected OAuth responses and deleted stored tokens without undefined-variable errors. Successful callbacks store the token before updating OAuth session values.
 - Corrected saved-ban spreadsheet updates to include the seventh Saved column for bansave rules while retaining six-column updates for ordinary bans and existing match-result ranges.
 - The prepared local MySQL command prefers `%USERPROFILE%\CorpoCH\mysql-test`, outside Windows app-private AppData redirection. Existing AppData setups remain supported only when the preferred folder is absent; ambiguous locations and access errors stop before startup.
 - Local MySQL preflight errors identify the missing, inaccessible or incorrectly typed item and show the expected folder and Windows account. Credential-load errors give a specific recovery message without exposing passwords. The local guide includes 32 isolated checks for folder selection, diagnostics and their safety boundaries.
@@ -46,12 +51,14 @@
 
 ### Delivery status
 
-The backend and viewer milestones are implemented but unreleased. The guide's automated-check block passes in Windows PowerShell 5.1: 204 application tests using the real SQLite migration chain through `0030`, 57 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Application checks include isolated OAuth recovery and saved-ban export corrections. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
+The backend and viewer milestones are implemented but unreleased. The guide's automated-check block passes in Windows PowerShell 5.1: 252 application tests using the real SQLite migration chain through `0030`, 78 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Application checks include OAuth session binding, token recovery, disabled-account rejection and saved-ban export corrections. Foundation checks include 21 offline staging preflight cases. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
 A user-run verification on `2e32fae` confirmed 190 application tests, 57 executed foundation tests with 9 explicit skips, 12 Node controller tests and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
 
-Five native MySQL checks pass on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 23.083 seconds with normal profile loading. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
+The original five native MySQL checks passed on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 23.083 seconds with normal profile loading. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
 
 The prepared instance was relocated outside AppData after confirming Windows app-private redirection. Its requested and physical paths now match, and the development-app rerun passed in 20.971 seconds. A standalone PowerShell run also passed all five tests in 1.165 seconds for the test bodies, removed the disposable database and stopped the server. Local setup is verified from both environments; deployment settings and viewer gates remain unchanged.
+
+The expanded eight-check native suite passes, including OAuth state consumption and token/callback concurrency with mocked Discord responses. Test bodies took 1.512 seconds; the disposable database was removed and the local server stopped. The private inventory preflight reports its three missing credential inputs without contacting services.
 
 Deployment-specific MySQL checks, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

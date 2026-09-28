@@ -1,10 +1,12 @@
 """Real MySQL checks, loaded only by the explicit disposable-database runner."""
 
 import os
+from datetime import timedelta
 from queue import Queue
 import re
 import threading
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlsplit
 
 if (
     re.fullmatch(r"corpo_viewer_validation_[0-9a-f]{32}", os.environ.get("CORPO_MYSQL_VIEWER_CHECK", "")) is None
@@ -14,10 +16,13 @@ if (
     raise RuntimeError("Use python -m tests.mysql_viewer_check with explicit disposable-database opt-in.")
 
 from django.conf import settings
+from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
 from django.db import connection, connections
 from django.test import RequestFactory, TransactionTestCase, override_settings
+from django.utils import timezone
 
-from corpoch import match_actions
+from corpoch import discord_oauth, match_actions
 from corpoch.dbot.models import Guilds
 from corpoch.match_actions import (
     StaleMatchAction, get_match_state_token, record_opening_action,
@@ -26,7 +31,7 @@ from corpoch.match_actions import (
 from corpoch.match_viewer import build_match_presentation
 from corpoch.match_viewer_reader import read_match_snapshot
 from corpoch.match_viewer_views import match_viewer_state
-from corpoch.models import Bracket, DiscordUser, Match, Tournament
+from corpoch.models import Bracket, DiscordToken, DiscordUser, Match, Tournament
 from tests.match_fixtures import create_corp_match
 
 
@@ -84,6 +89,38 @@ class MysqlMatchViewerChecks(TransactionTestCase):
             raise error
         return name, result
 
+    @override_settings(
+        SESSION_ENGINE="django.contrib.sessions.backends.db",
+        BOT_ID="8900",
+        REDIRECT_URI="https://viewer.invalid/auth",
+        AUTH_URL_DISCORD=(
+            "https://discord.com/oauth2/authorize?client_id=8900&response_type=code"
+            "&redirect_uri=https%3A%2F%2Fviewer.invalid%2Fauth&scope=identify+guilds"
+        ),
+    )
+    def create_browser_attempt(self):
+        """Stores one real browser session and its separate authorization attempt.
+
+        :return: Browser session key and one-use authorization state"""
+        request = RequestFactory().get("/auth/start")
+        request.session = SessionStore()
+        destination = discord_oauth.create_discord_authorization_url(request)
+        request.session.save()
+        nonce = parse_qs(urlsplit(destination).query)["state"][0]
+        return request.session.session_key, nonce
+
+    def create_expired_discord_token(self):
+        """Creates stored fixture credentials that require immediate renewal.
+
+        :return: Expired token for the existing fixture account"""
+        return DiscordToken.objects.create(
+            user=self.staff,
+            access_token="fixture-old-access",
+            refresh_token="fixture-old-refresh",
+            scopes="identify guilds",
+            expires=timezone.now() - timedelta(days=1),
+        )
+
     def select_first_chart(self):
         for index, owner in enumerate((0, 1, 1, 0)):
             self.match = record_opening_action(
@@ -100,6 +137,219 @@ class MysqlMatchViewerChecks(TransactionTestCase):
         self.assertFalse(settings.MATCH_VIEWER_POLLING_ENABLED)
         self.assertFalse(settings.MATCH_VIEWER_MYSQL_VERIFIED)
         self.assertEqual(settings.CELERY_BROKER_URL, "memory://")
+
+    def test_oauth_attempt_is_consumed_once_with_two_preloaded_browser_sessions(self):
+        browser_key, nonce = self.create_browser_attempt()
+        callbacks = []
+        for unused_index in range(2):
+            request = RequestFactory().get("/auth", {"state": nonce})
+            request.session = SessionStore(browser_key)
+            self.assertEqual(request.session.get("discord_oauth_state"), nonce)
+            callbacks.append(request)
+        both_loaded = threading.Barrier(2)
+        outcomes = Queue()
+        original_load = discord_oauth.load_discord_attempt
+
+        def load_before_competing_delete(request, returned_nonce):
+            attempt = original_load(request, returned_nonce)
+            if attempt is None:
+                raise AssertionError("Both callbacks must read the unconsumed attempt before deletion.")
+            both_loaded.wait(timeout=10)
+            return attempt
+
+        with patch("corpoch.discord_oauth.load_discord_attempt", side_effect=load_before_competing_delete):
+            try:
+                for index, request in enumerate(callbacks):
+                    self.start_worker(
+                        f"oauth-consumer-{index}",
+                        lambda request=request: discord_oauth.consume_discord_attempt(request, nonce),
+                        outcomes,
+                    )
+                results = [self.collect_outcome(outcomes)[1] for unused_index in range(2)]
+            finally:
+                both_loaded.abort()
+                for worker in self.workers:
+                    worker.join(timeout=20)
+        self.assertCountEqual(results, [True, False])
+        self.assertFalse(Session.objects.filter(session_key=nonce).exists())
+        self.assertTrue(Session.objects.filter(session_key=browser_key).exists())
+
+    def test_browser_and_scheduled_refresh_share_one_rotated_token(self):
+        stored = self.create_expired_discord_token()
+        browser_token = DiscordToken.objects.get(pk=stored.pk)
+        scheduled_token = DiscordToken.objects.get(pk=stored.pk)
+        self.assertEqual(browser_token.expires, scheduled_token.expires)
+        first_locked = threading.Event()
+        first_http_started = threading.Event()
+        scheduled_attempted_lock = threading.Event()
+        scheduled_finished = threading.Event()
+        release_refresh = threading.Event()
+        outcomes = Queue()
+        payload = {
+            "access_token": "fixture-refreshed-access",
+            "refresh_token": "fixture-refreshed-refresh",
+            "scope": "identify guilds",
+            "expires_in": 7 * 24 * 60 * 60,
+        }
+
+        def blocked_refresh(*arguments, **keywords):
+            self.assertTrue(first_locked.is_set(), "Refresh HTTP must run after acquiring the token lock.")
+            first_http_started.set()
+            if not release_refresh.wait(timeout=10):
+                raise AssertionError("The first token refresh was not released.")
+            return Mock(status_code=200, json=Mock(return_value=payload))
+
+        def browser_refresh():
+            def mark_acquired_lock(execute, sql, params, many, context):
+                result = execute(sql, params, many, context)
+                if "FOR UPDATE" in sql.upper() and "corpoch_discordtoken" in sql:
+                    first_locked.set()
+                return result
+
+            browser_token.login()
+            with connections["default"].execute_wrapper(mark_acquired_lock):
+                browser_token.refresh_expired_token()
+            return browser_token.access_token, browser_token.refresh_token
+
+        def scheduled_refresh():
+            def mark_lock_attempt(execute, sql, params, many, context):
+                if "FOR UPDATE" in sql.upper() and "corpoch_discordtoken" in sql:
+                    scheduled_attempted_lock.set()
+                return execute(sql, params, many, context)
+
+            try:
+                scheduled_token.login()
+                with connections["default"].execute_wrapper(mark_lock_attempt):
+                    scheduled_token.update_code()
+                return scheduled_token.access_token, scheduled_token.refresh_token
+            finally:
+                scheduled_finished.set()
+
+        with patch("corpoch.models.misc.Session") as session_type:
+            session_type.return_value.post.side_effect = blocked_refresh
+            self.start_worker("browser-refresh", browser_refresh, outcomes)
+            try:
+                self.assertTrue(first_http_started.wait(timeout=10), "The browser did not reach its locked refresh.")
+                self.start_worker("scheduled-refresh", scheduled_refresh, outcomes)
+                self.assertTrue(scheduled_attempted_lock.wait(timeout=10), "Scheduled renewal did not attempt the token lock.")
+                self.assertFalse(scheduled_finished.wait(timeout=0.2), "Scheduled renewal bypassed the held token lock.")
+            finally:
+                release_refresh.set()
+                for worker in self.workers:
+                    worker.join(timeout=20)
+            results = [self.collect_outcome(outcomes)[1] for unused_index in range(2)]
+            session_type.return_value.post.assert_called_once()
+            self.assertEqual(session_type.return_value.post.call_args.kwargs["data"], {
+                "grant_type": "refresh_token", "refresh_token": "fixture-old-refresh",
+            })
+            session_type.return_value.get.assert_not_called()
+        self.assertEqual(results, [(payload["access_token"], payload["refresh_token"])] * 2)
+        stored.refresh_from_db()
+        self.assertEqual((stored.access_token, stored.refresh_token), results[0])
+        self.assertEqual(browser_token.expires, scheduled_token.expires)
+        self.assertGreater(stored.expires, timezone.now() + timedelta(days=6))
+
+    @override_settings(ROOT_URLCONF="tests.model_test_discord_auth")
+    def test_callback_tokens_survive_overlapping_stored_token_refresh(self):
+        from tests.model_test_discord_auth import load_auth_views
+
+        stored = self.create_expired_discord_token()
+        browser_token = DiscordToken.objects.get(pk=stored.pk)
+        browser_key, nonce = self.create_browser_attempt()
+        callback = RequestFactory().get("/auth", {"code": "fixture-code", "state": nonce})
+        callback.session = SessionStore(browser_key)
+        self.assertEqual(callback.session.get("discord_oauth_state"), nonce)
+        refresh_started = threading.Event()
+        release_refresh = threading.Event()
+        code_exchanged = threading.Event()
+        identity_loaded = threading.Event()
+        callback_attempted_lock = threading.Event()
+        callback_finished = threading.Event()
+        outcomes = Queue()
+        refreshed = {
+            "access_token": "fixture-renewed-access",
+            "refresh_token": "fixture-renewed-refresh",
+            "scope": "identify guilds",
+            "expires_in": 7 * 24 * 60 * 60,
+        }
+        callback_tokens = {
+            **refreshed,
+            "access_token": "fixture-callback-access",
+            "refresh_token": "fixture-callback-refresh",
+        }
+
+        def exchange_grant(*arguments, **keywords):
+            grant = keywords["data"]["grant_type"]
+            if grant == "refresh_token":
+                refresh_started.set()
+                if not release_refresh.wait(timeout=10):
+                    raise AssertionError("The stored-token refresh was not released.")
+                payload = refreshed
+            elif grant == "authorization_code":
+                self.assertFalse(connections["default"].in_atomic_block)
+                code_exchanged.set()
+                payload = callback_tokens
+            else:
+                raise AssertionError("An unexpected OAuth grant was requested.")
+            return Mock(status_code=200, json=Mock(return_value=payload))
+
+        def read_identity(*arguments, **keywords):
+            self.assertTrue(code_exchanged.is_set())
+            self.assertFalse(connections["default"].in_atomic_block)
+            identity_loaded.set()
+            return Mock(status_code=200, json=Mock(return_value={
+                "id": str(self.staff.pk), "global_name": "Fixture Staff", "avatar": None,
+            }))
+
+        def refresh():
+            browser_token.login()
+            browser_token.refresh_expired_token()
+            return browser_token.access_token
+
+        with load_auth_views() as views, patch("corpoch.models.misc.Session") as session_type:
+            session_type.return_value.post.side_effect = exchange_grant
+            session_type.return_value.get.side_effect = read_identity
+
+            def complete_callback():
+                def mark_callback_lock(execute, sql, params, many, context):
+                    if "FOR UPDATE" in sql.upper() and "corpoch_discordtoken" in sql:
+                        self.assertTrue(code_exchanged.is_set() and identity_loaded.is_set())
+                        callback_attempted_lock.set()
+                    return execute(sql, params, many, context)
+
+                try:
+                    with connections["default"].execute_wrapper(mark_callback_lock):
+                        response = views.auth(callback)
+                    return response.status_code, response.url
+                finally:
+                    callback_finished.set()
+
+            self.start_worker("refresh-before-callback", refresh, outcomes)
+            try:
+                self.assertTrue(refresh_started.wait(timeout=10), "The existing token did not begin renewal.")
+                self.start_worker("callback-after-refresh", complete_callback, outcomes)
+                self.assertTrue(callback_attempted_lock.wait(timeout=10), "The callback did not attempt its stored-token lock.")
+                self.assertTrue(code_exchanged.is_set() and identity_loaded.is_set())
+                self.assertFalse(callback_finished.wait(timeout=0.2), "Callback storage bypassed the held token lock.")
+            finally:
+                release_refresh.set()
+                for worker in self.workers:
+                    worker.join(timeout=20)
+            results = dict(self.collect_outcome(outcomes) for unused_index in range(2))
+            self.assertEqual(session_type.return_value.post.call_count, 2)
+            self.assertCountEqual(
+                [call.kwargs["data"]["grant_type"] for call in session_type.return_value.post.call_args_list],
+                ["refresh_token", "authorization_code"],
+            )
+            session_type.return_value.get.assert_called_once()
+            views.update_user.assert_not_called()
+        self.assertEqual(results["refresh-before-callback"], refreshed["access_token"])
+        self.assertEqual(results["callback-after-refresh"], (302, "/auth/user"))
+        stored.refresh_from_db()
+        self.assertEqual(stored.access_token, callback_tokens["access_token"])
+        self.assertEqual(stored.refresh_token, callback_tokens["refresh_token"])
+        self.assertEqual(callback.session["access_token"], callback_tokens["access_token"])
+        self.assertFalse(Session.objects.filter(session_key=nonce).exists())
 
     @override_settings(MATCH_VIEWER_MYSQL_VERIFIED=True)
     def test_reader_sees_one_snapshot_while_result_and_next_round_commit(self):

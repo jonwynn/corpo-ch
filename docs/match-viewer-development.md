@@ -9,7 +9,7 @@ Version **1.7.0-beta.1** is unreleased. The staff website viewer, CORP Cup actio
 | 3. Layout | Navy, blue and coral viewer with large names, opening actions/latest picks, centered score, dynamic target, history and expandable details. |
 | 4. Staff reader | Paginated selection, scoped GET pages/fragments, fresh account checks, chart redaction and shared history validation. |
 | 5. Refresh | One request at a time, cancellation, pinned player slots, preserved details, stale/error states and access-loss clearing. |
-| 6. Verification | Isolated checks, user-run local verification and five native MySQL checks pass, including a standalone PowerShell run after the folder repair. General preview behavior is confirmed; detailed accessibility and staging integration remain gates. |
+| 6. Verification | Isolated checks, user-run local verification and eight native MySQL checks pass. The original five also passed in standalone PowerShell after the folder repair. General preview behavior is confirmed; detailed accessibility and staging integration remain gates. |
 | 7. Rollout | Not performed. Follow the [rollout checklist](match-viewer-rollout.md). |
 
 ## 1. Open PowerShell
@@ -81,6 +81,8 @@ Paste this entire block into **PowerShell**. Estimated duration: **15–60 secon
         'tests.model_test_match_admin',
         'tests.model_test_admin_imports',
         'tests.model_test_discord_auth',
+        'tests.model_test_discord_backend',
+        'tests.model_test_discord_token',
         'tests.model_test_match_publication',
         'tests.model_test_match_viewer_templates',
         'tests.model_test_match_viewer_views',
@@ -105,8 +107,8 @@ Expected results for this version:
 
 | Check | Successful result | What it verifies |
 |---|---|---|
-| Foundation | `Ran 66 tests` and `OK (skipped=9)` | 57 executed checks. The nine skips are deliberate: those checks require the separate application runner. |
-| Application | `Ran 204 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, presentation and access checks. |
+| Foundation | `Ran 87 tests` and `OK (skipped=9)` | 78 executed checks, including offline staging preflight. The nine skips are deliberate: those checks require the separate application runner. |
+| Application | `Ran 252 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, presentation and access checks. |
 | Refresh | `tests 12`, `pass 12`, `fail 0` | Request scheduling, timeouts, stale responses, retries and related browser logic. |
 
 `Creating test database`, `Applying ... OK`, and `Destroying test database` are normal application-test messages. They refer to a generated temporary database, not your tournament database. Counts may increase in later commits; keep the commit line when reporting results.
@@ -205,7 +207,7 @@ Paste the whole block into **Windows PowerShell**, opened normally under the Win
 }
 ```
 
-The command prints the Windows account and expected test folder, verifies the branch, prepared files and configuration checksums; starts its own MySQL process; runs five tests in a new disposable database; then stops that process. It restores any previous MySQL test environment variables. **Success ends with `PASS: All five native MySQL checks passed and the local server stopped.`** A failed check also attempts to stop the owned server and reports any incomplete shutdown. No deployment configuration or viewer switch is changed.
+The command prints the Windows account and expected test folder, verifies the branch, prepared files and configuration checksums; starts its own MySQL process; runs eight tests in a new disposable database; then stops that process. It restores any previous MySQL test environment variables. **Success ends with `PASS: All eight native MySQL checks passed and the local server stopped.`** A failed check also attempts to stop the owned server and reports any incomplete shutdown. No deployment configuration or viewer switch is changed.
 
 | Message or situation | Next action |
 |---|---|
@@ -221,7 +223,7 @@ The command prints the Windows account and expected test folder, verifies the br
 
 Steps 2–5 cover local verification. They do **not** complete deployment approval.
 
-Real OAuth login, Discord referee actions, screenshot processing and Sheets export also require test accounts and destinations. Start with the [private credential preparation guide](match-viewer-staging.md), then complete the [staging checklist](match-viewer-rollout.md). Credential files alone do not configure a safe staging runtime. Session-bound OAuth validation and explicit service isolation remain required before live testing. Do not run the README's self-hosting or deployment migration commands merely to complete this local guide. All production viewer switches remain off until the separate rollout checks pass.
+Real OAuth login, Discord referee actions, screenshot processing and Sheets export also require test accounts and destinations. Start with the [private credential preparation and offline preflight guide](match-viewer-staging.md), then complete the [staging checklist](match-viewer-rollout.md). Credential files alone do not configure a safe staging runtime. The session-bound OAuth flow has isolated tests; explicit service isolation and real login verification remain required before rollout. Do not run the README's self-hosting or deployment migration commands merely to complete this local guide. All production viewer switches remain off until the separate rollout checks pass.
 
 ## Implementation boundaries
 
@@ -253,7 +255,7 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The Python and Node commands in step 2 passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. The PowerShell blocks in both guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+The Python and Node commands in step 2 passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The latest combined guarded application run passed **252 tests in 19.717 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **78 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver and 21 offline staging preflight cases. The refresh controller passed **12 Node tests**. The PowerShell command blocks in the development, rollout and staging guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
 
 The local MySQL helper also passes **32 isolated PowerShell preflight checks** for preferred and legacy folder selection, ambiguous locations, missing and inaccessible paths, invalid file types, path containment, sanitized credential errors and environment restoration. These checks use temporary fixtures and do not read the prepared instance or start MySQL. Step 2 includes them in its first check group.
 
@@ -267,13 +269,15 @@ These tests cover the real SQLite schema, sporting transitions, delayed callback
 
 Focused browser checks covered all three approved visual states, keyboard-opened details surviving first-pick/later-round updates, a 503 retaining the `0:1` score with stale/retry status, recovery to a corrected `0:0`, and a saved light theme surviving reload. The CORP interactive example also refreshed from opening bans to `1:0` with P2's next pick. Access loss cleared the score and player names. A 390px window with a 375px content viewport had no horizontal overflow, including long player/chart names. These results do not cover every browser, zoom level or operating-system accessibility mode.
 
-The five native checks now pass on **MySQL 8.4.11/InnoDB with mysqlclient 2.3.0**. They cover default-off gates, snapshot consistency during a concurrent result/next-round commit, competing actions, connection/isolation cleanup, and fresh staff/chart-visibility checks. The runner applied the real migration chain to its disposable database, reported no Django system-check issues, and removed that database. The prepared-instance wrapper passed in Windows PowerShell 5.1 with normal profile loading: **1.131 seconds for the five test bodies; 23.083 seconds for the full start/migrate/check/cleanup/stop command**. Occupied-port refusal, shutdown after a simulated checker failure, and restoration of all five prior environment values also passed. These checks establish the local test configuration; deployment-specific concurrency, connection settings and load still require verification. `MATCH_VIEWER_MYSQL_VERIFIED` remains off by default.
+The original five native checks passed on **MySQL 8.4.11/InnoDB with mysqlclient 2.3.0**. They cover default-off gates, snapshot consistency during a concurrent result/next-round commit, competing actions, connection/isolation cleanup, and fresh staff/chart-visibility checks. The runner applied the real migration chain to its disposable database, reported no Django system-check issues, and removed that database. The prepared-instance wrapper passed in Windows PowerShell 5.1 with normal profile loading: **1.131 seconds for the five test bodies; 23.083 seconds for the full start/migrate/check/cleanup/stop command**. Occupied-port refusal, shutdown after a simulated checker failure, and restoration of all five prior environment values also passed. These checks establish the local test configuration; deployment-specific concurrency, connection settings and load still require verification. `MATCH_VIEWER_MYSQL_VERIFIED` remains off by default.
 
 After moving the stopped instance outside AppData, its requested and physical disk paths matched. The development-app rerun passed all five native checks and completed startup through shutdown in **20.971 seconds**. A subsequent standalone PowerShell run confirmed access to the relocated folder, passed all five native tests in **1.165 seconds for the test bodies**, reported no Django system-check issues, removed the disposable database and stopped the server. Local MySQL setup is verified from both environments; deployment settings and viewer gates remain unchanged.
 
 OAuth login, live Discord callbacks, screenshot decoding/storage, Sheets publication and ordinary service startup remain manual integration gates. Hydra imports are delayed until its analysis operation; a missing submodule produces an explicit operation error. Actual Hydra execution is unverified. The declared Python minimum is not a tested compatibility guarantee; use the verified runtime until another version passes the same checks.
 
 Historical migration `0001` requires `django-encrypted-json-fields==1.0.5`; that dependency is restored alongside the package used by current models. Fresh migrations and current encrypted-field roundtrips pass in isolated SQLite without changing historical migrations or deployment keys. Migration `0003` changed encryption fields without a conversion operation; conversion of old deployed credentials remains unverified and must be checked separately before upgrading such a database.
+
+The expanded native suite now passes **eight checks**, including concurrent OAuth attempt consumption, browser/scheduled token renewal and a callback overlapping renewal. The eight test bodies completed in **1.512 seconds** on the same local MySQL instance; the disposable database was removed and the owned server stopped. Discord HTTP and task dispatch were mocked. This verifies the controlled MySQL interleavings, not real Discord acceptance. The offline staging preflight also read the private inventory successfully and correctly reported both blank Discord fields and the missing Google key without revealing values.
 
 General preview behavior has been confirmed locally. Detailed human visual acceptance still needs explicit coverage of the three approved states against the reference, long text, 320–470px width, desktop, 200% zoom and operating-system high contrast. Forced-color CSS is present, but real OS high-contrast behavior remains unverified. The general preview report and automated checks do not approve those individual cases automatically.
 

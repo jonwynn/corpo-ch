@@ -4,7 +4,8 @@ Version **1.7.0-beta.1** is unreleased. No deployment has been performed. Start 
 
 ## Before staging
 
-- Prepare credentials using the [private development service guide](match-viewer-staging.md). Its resource inventory is not runtime configuration or an enforced access boundary. Finish the isolated database/broker, destination checks and session-bound OAuth validation described there before connecting services.
+- Prepare credentials and run the offline inventory preflight using the [private development service guide](match-viewer-staging.md). Its resource inventory is not runtime configuration or an enforced access boundary. Finish the isolated database/broker and destination checks described there before connecting services.
+- Use Django's database session backend for the session-bound Discord login. Keep the configured authorization URL, application ID and callback URI consistent. Website login links use `/auth/start`; the registered callback remains `/auth`. In-flight authorization attempts from before the upgrade must restart. Include the normal expired-session cleanup procedure for short-lived auxiliary login sessions.
 - Run the [isolated verification commands](match-viewer-development.md) and record the commit, runtime versions and results. The current tested runtime is Windows/CPython 3.14.7/Django 6.0.8; another deployment runtime needs its own checks.
 - Use a disposable MySQL database and test Discord guild, OAuth application, storage and Sheets destination. Do not point staging checks at live tournament records or channels.
 - Back up the staging database and referenced media using the deployment's established backup procedure. Keep backups outside the repository and verify that they restore. Preserve encryption keys securely; do not replace deployment keys to make migration checks pass.
@@ -32,7 +33,7 @@ Verify that the deployment serves `corpoch/match_viewer.css` and `corpoch/match_
 
 ## Verify MySQL before approving its gate
 
-The five native checks passed on the prepared local **MySQL 8.4.11/InnoDB** instance with **mysqlclient 2.3.0**, including a standalone PowerShell run after relocating the instance outside AppData. The database was removed and the server stopped afterward. This verifies that local configuration, not the deployment's connection settings or load. The MySQL gate remains off until deployment-specific checks also pass.
+The eight native checks passed on the prepared local **MySQL 8.4.11/InnoDB** instance with **mysqlclient 2.3.0**, with Discord requests mocked. The original five viewer checks also passed in standalone PowerShell after relocating the instance outside AppData. The database was removed and the server stopped afterward. This verifies that local configuration, not the deployment's connection settings or load. The MySQL gate remains off until deployment-specific checks also pass.
 
 On the prepared development PC, use [step 5 of the local guide](match-viewer-development.md#5-run-the-prepared-local-mysql-checks). That command handles startup, encrypted credentials and shutdown on port **3307**. The manual block below is for another separately prepared local test server; it does not install or start MySQL.
 
@@ -70,7 +71,7 @@ Paste the entire block into a fresh **PowerShell** window. It enters the example
 
 The checker supplies dummy settings, blocks deployment `.env` and service imports, and creates only `corpo_viewer_validation_<generated-id>`. It refuses to reuse an existing schema. Normal completion, including test failures, removes only the database it successfully created. If a worker cannot stop or cleanup fails, it retains that database and reports its exact name for local review. It does not alter deployment settings or enable viewer gates. Native test failure tracebacks can include local server/account diagnostics; review logs before sharing them.
 
-The five checks cover default-off gates, a coherent reader snapshot during a concurrent score/next-round update, two competing actions with the same token, connection/isolation cleanup, and fresh staff/hidden-chart checks. A passing run reports five tests and successful database removal. Exit status is `0` for success, `1` for test failures, `2` for setup/cleanup errors and `130` for interruption.
+The eight checks cover default-off gates, a coherent reader snapshot during a concurrent score/next-round update, two competing actions with the same revision token, connection/isolation cleanup, fresh staff/hidden-chart checks, one-use OAuth attempts, concurrent browser/scheduled renewal and a callback overlapping renewal. Discord responses are mocked. A passing run reports eight tests and successful database removal. Exit status is `0` for success, `1` for test failures, `2` for setup/cleanup errors and `130` for interruption.
 
 Record MySQL/driver versions and results. Before enabling a deployment, also exercise its own configuration:
 
@@ -93,7 +94,7 @@ Keep rules, chart/setlist configuration and seed assignments fixed during an act
 
 After MySQL verification, configure `MATCH_VIEWER_ENABLED=true`, `MATCH_VIEWER_MYSQL_VERIFIED=true` and initially `MATCH_VIEWER_POLLING_ENABLED=false` through the deployment's normal environment management. Values must be exactly `true`; defaults are false. Restart/reload the website as required by that deployment.
 
-Verify `/match-viewer/` and a selected match with a stored guild admin, guild referee and active superuser. Deny anonymous, inactive, other-guild, `is_staff`-only and assigned-referee-only accounts. Test real OAuth/session behavior. Check missing matches and unrevealed/shared charts. Inspect page source and network responses for withheld titles, raw configuration, screenshot paths and account details.
+Verify `/match-viewer/` and a selected match with a stored guild admin, guild referee and active superuser. Deny anonymous, inactive, other-guild, `is_staff`-only and assigned-referee-only accounts. Test real OAuth consent, browser-session matching, expired/replayed callbacks, cancellation, token expiry and temporary failure recovery. A failed login must offer a manual retry without a redirect loop; temporary Discord failures must not delete stored tokens. Check missing matches and unrevealed/shared charts. Inspect page source and network responses for withheld titles, raw configuration, screenshot paths and account details.
 
 Enable polling only after those checks pass. Exercise the following with real supported referee actions:
 

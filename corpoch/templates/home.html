@@ -55,7 +55,8 @@
 			</div>	
 		</div>	
 		<div id="Auth"><span><br></span>
-			<a href="{{auth_url}}" class="btn btn-lg shadow-none">Discord Login</button>
+			{% if discord_login_error %}<p role="alert">{{ discord_login_error }}</p>{% endif %}
+			<a href="{% url 'discord_auth_start' %}" class="btn btn-lg shadow-none">Discord Login</a>
 		</div>	
 	</div>
 {% endblock %}
