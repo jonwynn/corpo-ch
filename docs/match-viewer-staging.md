@@ -7,9 +7,33 @@ Use this guide on the prepared development PC. Its private folder is `%USERPROFI
 | File | Purpose | Action now |
 |---|---|---|
 | `dev-credentials.env` | Two blank development credential fields | Enter the DEV bot token and OAuth client secret. |
-| `staging-resources.json` | Development bot, server, channel and test spreadsheet IDs | Leave unchanged. This inventory is not active application configuration or an access restriction. |
+| `staging-resources.json` | Development bot, server, channel and test spreadsheet IDs | Verify the IDs. For a replacement development application, update `discord_bot_id` to its Application ID. This inventory is not active application configuration or an access restriction. |
 | `google-service-account.json` | Downloaded Google service-account key | Import the real key in step 2. No empty replacement file is provided. |
 | `README.txt` | Private resource links and local paths | Reference only. |
+
+## Configure the development Discord application
+
+Use one dedicated development application for its Application ID, bot token and OAuth2 client secret. Installing the bot and assigning its server role do not save those credentials on the development PC; complete the private-file steps below as well.
+
+In the Discord Developer Portal, enable **Guild Install** and **User Install**. The tournament commands use Guild Install; the existing screenshot context-menu commands also declare User Install. Use `applications.commands` for User Install and `bot` plus `applications.commands` for Guild Install. Install into the development server.
+
+On the **Bot** page, enable **Server Members Intent**. The bot explicitly requests it and loads guild members and their roles. Leave Presence Intent and Message Content Intent off for the current code. Keep **Requires OAuth2 Code Grant** off for the bot installation flow; website login uses a separate authorization flow. See the [Discord Gateway documentation](https://docs.discord.com/developers/events/gateway#privileged-intents).
+
+The full development permission profile follows the existing installation guidance and adds Read Message History for restoring match messages:
+
+| Permission | Purpose |
+|---|---|
+| View Channels, Send Messages, Embed Links, Attach Files | Match messages, referee controls and evidence attachments. |
+| Read Message History | Retrieve an existing match message after reconnect or restart. |
+| Manage Roles | Assign tournament/group roles. Put the bot role above only the test roles it must assign. |
+| Create Public Threads, Send Messages in Threads | Chart-path and screenshot-result threads. |
+| Create Private Threads | Maintainer's full installation profile; no current caller has been verified to require it. |
+
+This profile has permission value `378225675264`; it is broader than the five message/channel permissions needed for an initial referee-tool test. Administrator is not required. Check development-channel overrides after installation. Human testers also need Use Application Commands in that channel. [Discord permission reference](https://docs.discord.com/developers/topics/permissions)
+
+For a private development bot, set **Installation > Install Link** to **None**, then **Bot > Public Bot** off. Use an explicit OAuth2 URL generated with the scopes and permissions above, selecting Guild Install. A Discord Provided Link instead uses saved default install settings. Leave **Interactions Endpoint URL** blank because the implementation receives interactions through its Gateway connection. The website OAuth callback will be supplied with the isolated staging launcher.
+
+The bot's role is separate from the role assigned to human referees. Record the human referee role IDs for staging setup, but do not add an extra field to `staging-resources.json`; its current format does not accept one. The current guild model selects one referee role. Accepting either of several roles requires updating both bot authorization and the stored referee-membership synchronization before that pilot; granting administrator access is not a substitute. The staging database must also contain an active tournament and an active bracket using the test channel as its score-log channel before `/tourney match` can start a match.
 
 ## 1. Enter the two Discord credentials
 
@@ -32,13 +56,15 @@ Open **Windows PowerShell** normally from the Start menu. Administrator access i
 }
 ```
 
-Notepad++ opens four tabs. Edit only `dev-credentials.env`; the other tabs are references. In [Discord Developer Portal](https://discord.com/developers/applications), open the **dedicated development application**. Compare its Application ID with `discord_bot_id` in the `staging-resources.json` tab. Use these values from that same application:
+Notepad++ opens four tabs. In [Discord Developer Portal](https://discord.com/developers/applications), open the **dedicated development application**. Compare its Application ID with `discord_bot_id` in the `staging-resources.json` tab. If this is a new or replacement application, replace only that ID's value, preserving its JSON quotation marks and the other fields. Save the inventory. Keep the existing guild, channel and spreadsheet IDs when those test destinations are unchanged. The README and guide tabs are references.
+
+In `dev-credentials.env`, use these values from that same application:
 
 1. **Bot token**: put the token between the quotes after `BOT_TOKEN=`.
 2. **OAuth2 client secret**: put the client secret between the quotes after `BOT_SECRET=`. This is different from the bot token and the application's Public Key.
 3. Press **Ctrl+S** in Notepad++ and close the credential tab.
 
-If the existing token is not visible, obtain it privately from the development bot's owner. Coordinate before resetting a token or client secret: a reset can interrupt the existing development bot. Do not use production credentials. The [Discord OAuth2 documentation](https://docs.discord.com/developers/topics/oauth2) describes the client ID, client secret and authorization-code flow.
+For a newly created application, use its own credentials; the original Corpo application's credentials are not needed. If someone else manages the selected development application, obtain its credentials privately from that owner. Coordinate before resetting credentials or starting a second instance of the same application. Do not use production credentials. The [Discord OAuth2 documentation](https://docs.discord.com/developers/topics/oauth2) describes the client ID, client secret and authorization-code flow.
 
 Keep these values out of terminal commands, chat, screenshots and the repository's `.env` file. The prepared file is not loaded by the application yet. A callback address will be supplied with the isolated staging launcher; do not change production OAuth redirects.
 
@@ -112,7 +138,7 @@ Paste this block into **Windows PowerShell**. Estimated duration: **1–3 second
 }
 ```
 
-Inventory validity and credential readiness are separate results. A valid inventory can still produce `NOT READY` for blank Discord fields or a missing Google key. Exit code `0` means the local inputs passed; code `2` means something is missing or invalid. Neither result starts an application or grants access to the destinations.
+Inventory validity and credential readiness are separate results. A valid inventory can still produce `NOT READY` for blank Discord fields or a missing Google key, even after the bot is installed successfully. The check validates local structure; it cannot confirm that a token belongs to the inventory's application ID. Exit code `0` means the local inputs passed; code `2` means something is missing or invalid. Neither result starts an application or grants access to the destinations.
 
 When the full check passes and sheet sharing is complete, report **“Credentials saved; test sheet shared.”** Do not paste the files. If something fails, send only the error message after checking it contains no credentials.
 
@@ -133,7 +159,7 @@ Credential preparation is the current manual checkpoint. The following implement
 - A fresh staging database and media directory, an explicit local MySQL port, and a separate Redis/broker environment. The disposable MySQL checker is not a persistent staging installation. Do not copy the production database or reuse its queues.
 - Enforced development application, guild, channel and spreadsheet destinations. `HOME_GUILD_ID` alone does not restrict bot activity. Normal startup restores stored matches and may synchronize commands; workers can publish stored submissions.
 - Live verification of the new session-bound OAuth flow, expiry recovery and failure behavior against the development application. Isolated tests do not establish remote credential acceptance.
-- Coordination with the development bot's owner before starting another instance, a development referee-role ID and test accounts, and registration of the exact staging OAuth callback.
+- A development human-referee role ID and test accounts, and registration of the exact staging OAuth callback. If the same development application already runs elsewhere, coordinate before starting another instance. A separate self-owned application does not require the original application's credentials.
 - One explicit export to the test spreadsheet, with output inspected before any retry. Existing match and ban exports use separate requests; partial failure can leave output that a blind retry duplicates. Keep scheduled jobs off during the first export.
 
 Do not use the README's normal startup commands to bypass this checkpoint. Continue with the [rollout checklist](match-viewer-rollout.md) after the isolated staging setup is reviewed.

@@ -26,6 +26,7 @@
 
 ### Changed
 
+- Documented dedicated Discord application replacement, required Server Members Intent, the full development permission profile, and the separate roles for the bot and human referees. The credential guide now distinguishes successful bot installation from saved local credentials and verified service access.
 - Discord login starts locally with an expiring, browser-bound authorization attempt. Callbacks consume the attempt before contacting Discord; missing, mismatched, expired and replayed state return a manual retry page. The flow uses the existing database session table, with no new migration.
 - Discord token requests have connection/read timeouts, no automatic HTTP redirects and sanitized errors. Browser requests renew expired tokens; scheduled refresh retains credentials after temporary or configuration failures and removes only an explicitly invalid grant.
 - Token renewal and callback writes coordinate on the stored token row. Competing browser and scheduled refreshes reload the latest credentials before deciding whether another exchange is needed.
