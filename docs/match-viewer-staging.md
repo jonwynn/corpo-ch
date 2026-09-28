@@ -199,6 +199,8 @@ Success reports the expected bot identity, Server Members Intent configuration, 
 
 A pass does not verify effective channel write permissions, individual human memberships, Gateway startup, the OAuth callback or export formatting/protected ranges. Those remain controlled staging checks. Role discovery alone does not configure the application's referee authorization.
 
+After all read-only checks pass, continue with [local Linux runtime preparation](match-viewer-staging-runtime.md). The Windows pilot uses Ubuntu on WSL 2 for the complete service runtime; installing only a broker would leave native Windows Celery unsupported. The existing Windows preview and isolated checks remain available.
+
 ## Login changes available for staging
 
 Discord login begins at the local `/auth/start` route. It binds a short-lived authorization attempt to the browser session and verifies the callback before exchanging its code. The existing `/auth` callback address stays in use. Restart login from the website after upgrading; an older authorization link without the new state value is rejected.

@@ -28,6 +28,7 @@
 
 ### Changed
 
+- Added a Windows PowerShell guide for installing and verifying Ubuntu 24.04 on WSL 2 before the local service pilot. The complete runtime will use Linux because native Windows Celery is unsupported; runtime provisioning, isolated settings and live application checks remain pending.
 - Referee synchronization publishes one complete membership update after remote lookups succeed, with a guild-row lock and a fresh configuration check. Missing channels no longer block that update. Failed lookups or changed role configuration retain the previous membership; role selection still requires a successful guild refresh before website access changes.
 - Documented read-only service verification, rejected-token recovery in Notepad++, and the guild refresh required to apply referee-role membership changes to website access.
 - Documented dedicated Discord application replacement, required Server Members Intent, the full development permission profile, and the separate roles for the bot and human referees. The credential guide now distinguishes successful bot installation from saved local credentials and verified service access.
@@ -56,7 +57,7 @@
 
 ### Delivery status
 
-The backend and viewer milestones are implemented but unreleased. Current validation passes 273 application tests using the real SQLite migration chain through `corpoch.0030` and `dbot.0006`, plus 103 executed foundation tests with 9 explicit skips. This includes 21 referee-role cases and 25 read-only service-check cases with simulated responses. The unchanged refresh controller previously passed 12 Node tests. The guide's command pattern was verified in Windows PowerShell 5.1; all 13 current PowerShell blocks parse in that version. Application checks also cover OAuth session binding, token recovery, disabled-account rejection and saved-ban export corrections. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
+The backend and viewer milestones are implemented but unreleased. Current validation passes 273 application tests using the real SQLite migration chain through `corpoch.0030` and `dbot.0006`, plus 103 executed foundation tests with 9 explicit skips. This includes 21 referee-role cases and 25 read-only service-check cases with simulated responses. The unchanged refresh controller previously passed 12 Node tests. The guide's command pattern was verified in Windows PowerShell 5.1; all 16 current PowerShell blocks parse in that version. Application checks also cover OAuth session binding, token recovery, disabled-account rejection and saved-ban export corrections. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
 A user-run verification on `2e32fae` confirmed 190 application tests, 57 executed foundation tests with 9 explicit skips, 12 Node controller tests and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
 

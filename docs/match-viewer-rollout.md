@@ -5,6 +5,7 @@ Version **1.7.0-beta.1** is unreleased. No deployment has been performed. Start 
 ## Before staging
 
 - Prepare credentials and run the offline inventory preflight using the [private development service guide](match-viewer-staging.md). Its resource inventory is not runtime configuration or an enforced access boundary. Finish the isolated database/broker and destination checks described there before connecting services.
+- For the local Windows pilot, complete [Ubuntu on WSL 2 preparation](match-viewer-staging-runtime.md) before service provisioning. Run the complete staging service stack in Linux, with a separate Python environment and fresh database/broker. Existing Windows test results do not qualify Linux dependencies or service startup.
 - Use Django's database session backend for the session-bound Discord login. Keep the configured authorization URL, application ID and callback URI consistent. Website login links use `/auth/start`; the registered callback remains `/auth`. In-flight authorization attempts from before the upgrade must restart. Include the normal expired-session cleanup procedure for short-lived auxiliary login sessions.
 - Run the [isolated verification commands](match-viewer-development.md) and record the commit, runtime versions and results. The current tested runtime is Windows/CPython 3.14.7/Django 6.0.8; another deployment runtime needs its own checks.
 - Use a disposable MySQL database and test Discord guild, OAuth application, storage and Sheets destination. Do not point staging checks at live tournament records or channels.

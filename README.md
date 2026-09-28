@@ -12,6 +12,7 @@ This fork adds a read-only live match viewer for tournament staff on the existin
 - [Viewer contract and rule decisions](docs/match-viewer-contract.md)
 - [Beginner PowerShell guide: local checks and preview](docs/match-viewer-development.md)
 - [Private development credentials and test-service preparation](docs/match-viewer-staging.md)
+- [Local Linux runtime prerequisite for the service pilot](docs/match-viewer-staging-runtime.md)
 - [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
 - [Changelog](CHANGELOG.md)
 
