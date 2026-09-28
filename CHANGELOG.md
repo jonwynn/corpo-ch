@@ -24,6 +24,7 @@
 
 ### Changed
 
+- Added the PowerShell command to open the local development and rollout guides in Notepad++.
 - Incorporated verified fixes from the maintainer's [production-fix commit `a866682`](https://github.com/Jetsurf/corpo-ch/commit/a866682abe9db80bc195120051f1bdfd1d0381e1): channel/role admin search, per-match bot startup recovery, qualifier validation wording and 15-column qualifier export. Existing CORP action and publication checks remain in place.
 - Replaced append/delete player roster export with a single batch that replaces roster values, clears stale entries, and preserves the header and unrelated columns. Player names and Discord IDs are written as literal text.
 - Added complete PowerShell copy-and-paste instructions for entering the repository, checking prerequisites, running all local checks, inspecting the preview, and recognizing success or failure. MySQL and service-dependent checks remain separate.

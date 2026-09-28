@@ -20,6 +20,13 @@ Copy a complete code block below, paste it into PowerShell, and press **Enter**.
 
 These blocks use `C:\git\corpo-ch` as the checkout folder. That folder is the **repository root**: it contains `README.md`, `manage.py`, `tests`, and `corpoch`. If your checkout is elsewhere, replace only that folder path in each block.
 
+To open both guides in **Notepad++**, paste this block into **PowerShell**. Estimated duration: **1–5 seconds**; no GPU. It uses the standard Notepad++ installation folder and opens each guide in its own editor tab.
+
+```powershell
+Set-Location -LiteralPath 'C:\git\corpo-ch' -ErrorAction Stop
+& 'C:\Program Files\Notepad++\notepad++.exe' '.\docs\match-viewer-development.md' '.\docs\match-viewer-rollout.md'
+```
+
 The local checks use the prepared `.venv` folder, which contains this application's Python and dependencies. No activation command, execution-policy change, `.env` file, Discord account, or MySQL server is needed for steps 2–4. This is a verification guide for an existing prepared checkout; a fresh clone without its dependencies needs setup first.
 
 ## 2. Run all checks that work without external services
@@ -218,7 +225,7 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The exact step 2 block passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. Its combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. All seven PowerShell blocks in the development/rollout guides passed syntax parsing in Windows PowerShell 5.1; the MySQL and deployment commands were not executed.
+The exact step 2 block passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. Its combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. All eight PowerShell blocks in the development/rollout guides passed syntax parsing in Windows PowerShell 5.1; the MySQL and deployment commands were not executed.
 
 The application suite includes three admin regression checks for the maintainer's missing-import fixes. They exercise the actual admin methods with outbound task dispatch mocked; no Discord update is sent.
 
