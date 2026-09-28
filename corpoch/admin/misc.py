@@ -5,6 +5,8 @@ from solo.admin import SingletonModelAdmin
 
 from corpoch.models import GSheetAPI, DiscordUser
 
+import corpoch.dbot.tasks
+
 @admin.register(GSheetAPI)
 class GSheetAPIAdmin(SingletonModelAdmin):
 	readonly_fields = ['sa_name']

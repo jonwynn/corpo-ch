@@ -46,6 +46,7 @@ $viewer_test_modules = @(
     "tests.model_test_match_actions",
     "tests.model_test_match_bot",
     "tests.model_test_match_admin",
+    "tests.model_test_admin_imports",
     "tests.model_test_match_publication",
     "tests.model_test_match_viewer_templates",
     "tests.model_test_match_viewer_views"
@@ -77,6 +78,8 @@ The presentation digest compares content; it is not a sequence number. Browser g
 ## Evidence and remaining limits
 
 Local verification uses Windows, CPython 3.14.7, Django 6.0.8 and Celery 5.6.3. The combined guarded application run passed **171 tests in 23.320 seconds**, applied migrations through `corpoch.0030` and destroyed the test database afterward. Django reported no system-check issues. The foundation runner passed **44 executed tests**, with **9 explicit model-only skips**; the refresh controller passed **12 Node tests**.
+
+Three additional admin regression checks pass after applying the maintainer's missing-import fixes. They exercise the actual admin methods with outbound task dispatch mocked; no Discord update is sent.
 
 These tests cover the real SQLite schema, sporting transitions, delayed callbacks, admin/bot integration seams, privacy, templates and recorded-state projection. Selected-reader query counts remain bounded when unrelated matches are added. Production latency, concurrent load and browser payload budgets still need measurement.
 

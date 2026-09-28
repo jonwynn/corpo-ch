@@ -23,6 +23,7 @@
 
 ### Changed
 
+- Restored missing imports in Discord user refresh and tournament administration from the maintainer's patch. Focused tests cover task dispatch, missing staff membership and qualifier visibility without contacting Discord.
 - Aligned package and application development versions. The upstream baseline at `51d8836` identifies itself as `1.6.0`; its package metadata still said `1.5.4`. No published tag or release was changed.
 - Added fork development and validation documentation while preserving existing setup instructions and contributor credits.
 - Restored `django-encrypted-json-fields==1.0.5`, required by historical migration `0001`. Fresh migrations now complete without editing migration history or replacing the encryption package used by current models.
