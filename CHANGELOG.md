@@ -20,7 +20,8 @@
 - Native browser refresh with one request at a time, cancellation, pinned identity checks, stale/retry handling, preserved details and access-loss clearing. Existing overlay refresh is unchanged.
 - Dark, light and system appearance choices, saved theme selection, narrow layouts and forced-color styles.
 - A loopback fixture preview with simulated updates/failures, read-side regression tests, 12 refresh-controller tests and a staged rollout/rollback checklist.
-- An opt-in local MySQL checker that creates its own disposable database for five concurrency/access tests. Thirteen no-server checks cover its configuration and cleanup boundaries; native MySQL execution remains a rollout gate.
+- An opt-in local MySQL checker that creates its own disposable database for five concurrency/access tests. Thirteen no-server checks cover its configuration and cleanup boundaries; deployment-specific database verification remains a rollout gate.
+- A PowerShell command for the prepared private MySQL test instance. It verifies the branch, paths and checksums, refuses occupied ports, runs the five checks, stops only its own server and restores previous session variables. Credentials stay Windows-encrypted outside the repository.
 
 ### Changed
 
@@ -42,4 +43,8 @@
 
 The backend and viewer milestones are implemented but unreleased. The guide's exact automated-check block passes in Windows PowerShell 5.1: 190 application tests using the real SQLite migration chain through `0030`, 57 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
-Real MySQL concurrency, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.
+A user-run verification on `2e32fae` confirmed the same passing counts and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
+
+Five native MySQL checks pass on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 22.520 seconds. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
+
+Deployment-specific MySQL checks, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

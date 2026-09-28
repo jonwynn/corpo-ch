@@ -31,7 +31,9 @@ Verify that the deployment serves `corpoch/match_viewer.css` and `corpoch/match_
 
 ## Verify MySQL before approving its gate
 
-The SQLite suite and mocked SQL checks do not prove MySQL concurrency. The opt-in checker runs five native tests against a fresh database on a local test server. These native tests have not yet been executed.
+The five native checks passed on the prepared local **MySQL 8.4.11/InnoDB** instance with **mysqlclient 2.3.0**. The database was removed and the server stopped afterward. This verifies that local configuration, not the deployment's connection settings or load. The MySQL gate remains off until deployment-specific checks also pass.
+
+On the prepared development PC, use [step 5 of the local guide](match-viewer-development.md#5-run-the-prepared-local-mysql-checks). That command handles startup, encrypted credentials and shutdown on port **3307**. The manual block below is for another separately prepared local test server; it does not install or start MySQL.
 
 Prerequisites: a dedicated local MySQL test server with InnoDB, the declared `mysqlclient` dependency installed, and a test account allowed to create, use and drop disposable databases. Use a literal loopback IP address; `localhost` and remote hosts are rejected. Do not use a production server or deployment credentials. If you do not have a test server/account, stop at the [local verification guide](match-viewer-development.md) and ask the maintainer to arrange them. This command does not install MySQL.
 

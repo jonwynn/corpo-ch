@@ -9,7 +9,7 @@ Version **1.7.0-beta.1** is unreleased. The staff website viewer, CORP Cup actio
 | 3. Layout | Navy, blue and coral viewer with large names, opening actions/latest picks, centered score, dynamic target, history and expandable details. |
 | 4. Staff reader | Paginated selection, scoped GET pages/fragments, fresh account checks, chart redaction and shared history validation. |
 | 5. Refresh | One request at a time, cancellation, pinned player slots, preserved details, stale/error states and access-loss clearing. |
-| 6. Verification | Isolated Python/JavaScript checks and focused browser checks pass. Human visual acceptance and real service/database checks remain gates. |
+| 6. Verification | Isolated checks, user-run local verification and five native MySQL checks pass. General preview behavior is confirmed; detailed accessibility and staging integration remain gates. |
 | 7. Rollout | Not performed. Follow the [rollout checklist](match-viewer-rollout.md). |
 
 ## 1. Open PowerShell
@@ -187,11 +187,33 @@ For an occupied port, paste this alternate block into **PowerShell**. Estimated 
 }
 ```
 
-## 5. Separate checks that require a test server or accounts
+## 5. Run the prepared local MySQL checks
 
-Steps 2–4 complete the local automated and visual checks. They do **not** complete deployment approval.
+The development PC has a separate **MySQL 8.4.11** test instance in `%LOCALAPPDATA%\CorpoCH\mysql-test`. It listens only on `127.0.0.1:3307` while this command runs. It has no Windows service, automatic startup or firewall rule. Its data and Windows-encrypted credentials stay outside the repository. The test account is restricted to databases with the `corpo_viewer_validation_` prefix. The checker creates a new generated name and removes only the database it created.
 
-The [MySQL instructions](match-viewer-rollout.md#verify-mysql-before-approving-its-gate) include a separate copy-and-paste command. Run it only after a dedicated local MySQL test server and test account are ready. If you do not have that server/account, record **MySQL not yet tested** and ask the maintainer to arrange them. The command cannot install a server or supply credentials.
+Paste the whole block into **Windows PowerShell**, opened normally under the Windows account used for setup. No password entry, administrator access or execution-policy change is needed. Estimated duration: **20–90 seconds**; CPU/database I/O only, no GPU. Let it finish before closing the window.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    & ([ScriptBlock]::Create((Get-Content -LiteralPath '.\tests\mysql_local_check.ps1' -Raw)))
+}
+```
+
+The command verifies the branch, prepared files and configuration checksums; starts its own MySQL process; runs five tests in a new disposable database; then stops that process. It restores any previous MySQL test environment variables. **Success ends with `PASS: All five native MySQL checks passed and the local server stopped.`** A failed check also attempts to stop the owned server and reports any incomplete shutdown. No deployment configuration or viewer switch is changed.
+
+| Message or situation | Next action |
+|---|---|
+| Final PASS message | Local MySQL verification is complete. The server has stopped. |
+| Port 3307 is already in use | Stop and report the message. The command leaves the existing process alone. |
+| Missing files, credential loading error or checksum mismatch | Report the message; do not bypass the checks. This wrapper requires the prepared local instance and Windows account. |
+| Tests fail, cleanup fails or the server remains running | Keep the error and any reported database name/process ID for review. Do not delete the data folder or terminate an unidentified process. |
+| Another PC or fresh clone | Arrange separate test-server setup first. The private instance and credentials are not included in Git. The [manual MySQL command](match-viewer-rollout.md#verify-mysql-before-approving-its-gate) supports another prepared local test server. |
+
+## 6. Checks that require staging accounts
+
+Steps 2–5 cover local verification. They do **not** complete deployment approval.
 
 Real OAuth login, Discord referee actions, screenshot processing and Sheets export also require test accounts and destinations. Those are covered in the [staging checklist](match-viewer-rollout.md). Do not run the README's self-hosting or deployment migration commands merely to complete this local guide. All production viewer switches remain off until the separate rollout checks pass.
 
@@ -225,7 +247,9 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The exact step 2 block passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. Its combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. All eight PowerShell blocks in the development/rollout guides passed syntax parsing in Windows PowerShell 5.1; the MySQL and deployment commands were not executed.
+The exact step 2 block passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. Its combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. The PowerShell blocks in both guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+
+A user-run verification on commit **`2e32fae`** also passed: **57 foundation checks with 9 expected skips**, **190 application tests in 18.173 seconds**, and **12 refresh tests with zero failures**. The nine model-dependent checks skipped by the foundation runner passed in the application run. Migrations through `0030`, the clean Django system check, temporary-database cleanup and the final local PASS message are recorded in that run. The preview started successfully, and its general behavior was reported as working as intended. This confirms the local verification workflow; it does not establish native MySQL, live-service or complete accessibility acceptance.
 
 The application suite includes three admin regression checks for the maintainer's missing-import fixes. They exercise the actual admin methods with outbound task dispatch mocked; no Discord update is sent.
 
@@ -235,12 +259,12 @@ These tests cover the real SQLite schema, sporting transitions, delayed callback
 
 Focused browser checks covered all three approved visual states, keyboard-opened details surviving first-pick/later-round updates, a 503 retaining the `0:1` score with stale/retry status, recovery to a corrected `0:0`, and a saved light theme surviving reload. The CORP interactive example also refreshed from opening bans to `1:0` with P2's next pick. Access loss cleared the score and player names. A 390px window with a 375px content viewport had no horizontal overflow, including long player/chart names. These results do not cover every browser, zoom level or operating-system accessibility mode.
 
-MySQL command-order tests verify the reader's intended repeatable-read transaction and connection cleanup through mocks. They do **not** prove MySQL snapshot consistency, row locking or concurrent writer behavior. An [opt-in local MySQL checker](match-viewer-rollout.md#verify-mysql-before-approving-its-gate) now supplies five native checks; those checks have not been run against MySQL. The `MATCH_VIEWER_MYSQL_VERIFIED` gate remains off until native and deployment-specific checks pass.
+The five native checks now pass on **MySQL 8.4.11/InnoDB with mysqlclient 2.3.0**. They cover default-off gates, snapshot consistency during a concurrent result/next-round commit, competing actions, connection/isolation cleanup, and fresh staff/chart-visibility checks. The runner applied the real migration chain to its disposable database, reported no Django system-check issues, and removed that database. The prepared-instance wrapper passed in Windows PowerShell 5.1: **1.105 seconds for the five test bodies; 22.520 seconds for the full start/migrate/check/cleanup/stop command**. Occupied-port refusal, shutdown after a simulated checker failure, and restoration of all five prior environment values also passed. These checks establish the local test configuration; deployment-specific concurrency, connection settings and load still require verification. `MATCH_VIEWER_MYSQL_VERIFIED` remains off by default.
 
 OAuth login, live Discord callbacks, screenshot decoding/storage, Sheets publication and ordinary service startup remain manual integration gates. Hydra imports are delayed until its analysis operation; a missing submodule produces an explicit operation error. Actual Hydra execution is unverified. The declared Python minimum is not a tested compatibility guarantee; use the verified runtime until another version passes the same checks.
 
 Historical migration `0001` requires `django-encrypted-json-fields==1.0.5`; that dependency is restored alongside the package used by current models. Fresh migrations and current encrypted-field roundtrips pass in isolated SQLite without changing historical migrations or deployment keys. Migration `0003` changed encryption fields without a conversion operation; conversion of old deployed credentials remains unverified and must be checked separately before upgrading such a database.
 
-Human visual acceptance must compare the three approved states with the reference, then complete long-text, 320–470px width, desktop, 200% zoom and operating-system high-contrast checks. Forced-color CSS is present, but real OS high-contrast behavior remains unverified. The preview and automated checks do not approve those visual results automatically.
+General preview behavior has been confirmed locally. Detailed human visual acceptance still needs explicit coverage of the three approved states against the reference, long text, 320–470px width, desktop, 200% zoom and operating-system high contrast. Forced-color CSS is present, but real OS high-contrast behavior remains unverified. The general preview report and automated checks do not approve those individual cases automatically.
 
 Keep bracket rules, chart/setlist configuration and seed assignments fixed during an active pilot match. Those separate admin/configuration writes are not all coordinated by the match action lock. See the rollout checklist for corrections, pause conditions and rollback.
