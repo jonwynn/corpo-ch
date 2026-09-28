@@ -239,6 +239,80 @@ class UpstreamProviderTests(TestCase):
         self.assertFalse(self.provider._submission.submitted)
         self.provider._submission.save.assert_not_called()
 
+    def test_match_correction_preserves_saved_bans_and_existing_row_locations(self):
+        for ban_ruleset, last_column in (("bansave", "G"), ("default", "F")):
+            with self.subTest(ban_ruleset=ban_ruleset):
+                winner = SimpleNamespace(ch_name="Winner", check_ch_name=lambda name: name == "Winner")
+                loser = SimpleNamespace(ch_name="Loser")
+                player_stats = [
+                    SimpleNamespace(
+                        profile_name=name, score=score, notes_missed=2, notes_hit=98,
+                        is_fc=False, gamepad_mode=False, excess_hits=1,
+                        frets_ghosted=0, sp_phrases_earned=4,
+                    )
+                    for name, score in (("Winner", 200), ("Loser", 100))
+                ]
+                round_record = SimpleNamespace(
+                    steg=SimpleNamespace(players=player_stats), picked=loser,
+                    winner=winner, loser=loser,
+                    chart=SimpleNamespace(tournament_name="Selected Song"),
+                    created=datetime(2026, 1, 2, tzinfo=timezone.utc),
+                    screenshot=SimpleNamespace(url="/fixture.png"),
+                )
+                bracket = Mock()
+                bracket.__str__ = Mock(return_value="Fixture Bracket")
+                bracket.ruleset = SimpleNamespace(ban_ruleset=ban_ruleset)
+                bans = Mock()
+                bans.all.return_value = [
+                    SimpleNamespace(
+                        player=winner, chart=SimpleNamespace(tournament_name="Saved Song"), saved=True,
+                    ),
+                    SimpleNamespace(
+                        player=loser, chart=SimpleNamespace(tournament_name="Banned Song"), saved=False,
+                    ),
+                ]
+                self.provider._submission = SimpleNamespace(
+                    id="fixture-match", bracket=bracket, group="A",
+                    short_name_no_seeds="Winner vs Loser", rounds=[round_record],
+                    match_bans=bans, tournament=SimpleNamespace(short_name="FIX"),
+                )
+                match_worksheet = Mock(title="FIX - Match Data")
+                match_worksheet.find.return_value = SimpleNamespace(row=7)
+                bans_worksheet = Mock(title="FIX - Bans Data")
+                bans_worksheet.find.return_value = SimpleNamespace(row=12)
+                self.provider._sheet = Mock()
+                self.provider._sheet.worksheet.return_value = bans_worksheet
+                self.provider._ws = match_worksheet
+
+                self.provider.update_match()
+
+                match_worksheet.find.assert_called_once_with("fixture-match")
+                bans_worksheet.find.assert_called_once_with("fixture-match")
+                self.provider._sheet.worksheet.assert_called_once_with("FIX - Bans Data")
+                match_calls = match_worksheet.update.call_args_list
+                self.assertEqual([request.args[1] for request in match_calls], ["A7:R7", "A8:R8"])
+                self.assertEqual([len(request.args[0][0]) for request in match_calls], [18, 18])
+                self.assertEqual(
+                    [request.args[0][0][6:9] for request in match_calls],
+                    [["Winner", 200, "W"], ["Loser", 100, "L"]],
+                )
+                ban_calls = bans_worksheet.update.call_args_list
+                self.assertEqual(
+                    [request.args[1] for request in ban_calls],
+                    [f"A12:{last_column}12", f"A13:{last_column}13"],
+                )
+                expected_rows = [
+                    ["fixture-match", "Fixture Bracket", "A", "Winner vs Loser", "Winner", "Saved Song"],
+                    ["fixture-match", "Fixture Bracket", "A", "Winner vs Loser", "Loser", "Banned Song"],
+                ]
+                if ban_ruleset == "bansave":
+                    expected_rows[0].append(True)
+                    expected_rows[1].append(False)
+                self.assertEqual([request.args[0] for request in ban_calls], [[row] for row in expected_rows])
+                self.assertTrue(all(request.kwargs == {"raw": False} for request in match_calls + ban_calls))
+                match_worksheet.append_rows.assert_not_called()
+                bans_worksheet.append_rows.assert_not_called()
+
     def test_hydra_helper_is_loaded_only_when_analysis_is_requested(self):
         hydra_type = load_provider_class("Hydra")
         provider = hydra_type()

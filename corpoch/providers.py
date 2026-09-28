@@ -441,7 +441,7 @@ class GSheets():
 		cell = self._ws.find(self._submission.id)
 		for i, line in enumerate(self.ban_lines):
 			column = "F"
-			if self._submission.bracket.ruleset == "bansave":
+			if self._submission.bracket.ruleset.ban_ruleset == "bansave":
 				column = "G"
 			self._ws.update([line], f"A{(cell.row + i)}:{column}{(cell.row + i)}", raw=False)
 

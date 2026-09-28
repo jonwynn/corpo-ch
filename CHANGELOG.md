@@ -25,6 +25,9 @@
 
 ### Changed
 
+- Added private development credential preparation instructions for Notepad++, a downloaded Google service-account key and test-sheet sharing. Resource IDs and credentials remain outside the repository; isolated service configuration and session-bound OAuth validation remain required before live testing.
+- Discord login now recovers from missing callback/session data, rejected OAuth responses and deleted stored tokens without undefined-variable errors. Successful callbacks store the token before updating OAuth session values. This change does not add OAuth state validation, transport recovery or automatic token refresh.
+- Corrected saved-ban spreadsheet updates to include the seventh Saved column for bansave rules while retaining six-column updates for ordinary bans and existing match-result ranges.
 - The prepared local MySQL command prefers `%USERPROFILE%\CorpoCH\mysql-test`, outside Windows app-private AppData redirection. Existing AppData setups remain supported only when the preferred folder is absent; ambiguous locations and access errors stop before startup.
 - Local MySQL preflight errors identify the missing, inaccessible or incorrectly typed item and show the expected folder and Windows account. Credential-load errors give a specific recovery message without exposing passwords. The local guide includes 32 isolated checks for folder selection, diagnostics and their safety boundaries.
 - Added the PowerShell command to open the local development and rollout guides in Notepad++.
@@ -43,9 +46,9 @@
 
 ### Delivery status
 
-The backend and viewer milestones are implemented but unreleased. The guide's exact automated-check block passes in Windows PowerShell 5.1: 190 application tests using the real SQLite migration chain through `0030`, 57 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
+The backend and viewer milestones are implemented but unreleased. The guide's automated-check block passes in Windows PowerShell 5.1: 204 application tests using the real SQLite migration chain through `0030`, 57 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Application checks include isolated OAuth recovery and saved-ban export corrections. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
-A user-run verification on `2e32fae` confirmed the same passing counts and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
+A user-run verification on `2e32fae` confirmed 190 application tests, 57 executed foundation tests with 9 explicit skips, 12 Node controller tests and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
 
 Five native MySQL checks pass on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 23.083 seconds with normal profile loading. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
 

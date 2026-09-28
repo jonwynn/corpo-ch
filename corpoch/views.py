@@ -22,45 +22,55 @@ def home(request: HttpRequest):
 def auth(request: HttpRequest):
 	from corpoch.models import DiscordUser, DiscordToken
 	code = request.GET.get("code")
-	if code:# if code is valid
-		oauth = DiscordToken()
-		oauth.login(code=code)
-
-		request.session["access_token"] = oauth.access_token
-		user = OAuthUser(oauth.identity())
-		request.session['user_id'] = user.id
-		try:
-			token = DiscordToken.objects.get(user__id=user.id)
-			token.access_token = oauth.access_token
-			token.refresh_token = oauth.refresh_token
-			token.expires = oauth.expires
-			token.save()
-			oauth = token
-		except DiscordToken.DoesNotExist:
-			oauth.user, created = DiscordUser.objects.get_or_create(pk=user.id)
-			if created:
-				update_user(user.id)
-			oauth.save()
-	else:
-		access_token = request.session.get("access_token")
-	if not oauth.access_token:
+	if not code:
+		if request.GET.get("error"):
+			return redirect_discord_login(request)
 		return redirect(settings.AUTH_URL_DISCORD)
+	oauth = DiscordToken()
+	try:
+		oauth.login(code=code)
+		user = OAuthUser(oauth.identity())
+	except DiscordToken.AuthError:
+		return redirect_discord_login(request)
+	try:
+		token = DiscordToken.objects.get(user__id=user.id)
+		token.access_token = oauth.access_token
+		token.refresh_token = oauth.refresh_token
+		token.expires = oauth.expires
+		token.save()
+		oauth = token
+	except DiscordToken.DoesNotExist:
+		oauth.user, created = DiscordUser.objects.get_or_create(pk=user.id)
+		if created:
+			update_user(user.id)
+		oauth.save()
+	request.session["access_token"] = oauth.access_token
+	request.session['user_id'] = user.id
 	return redirect("user")
+
+
+def redirect_discord_login(request: HttpRequest):
+    """
+    Clears stale OAuth session values before restarting Discord login
+
+    :param HttpRequest request: Current browser request
+    :return: Redirect to the configured Discord authorization URL"""
+    request.session.pop("access_token", None)
+    request.session.pop("user_id", None)
+    return redirect(settings.AUTH_URL_DISCORD)
+
 
 def user(request: HttpRequest):
 	from corpoch.models import DiscordToken, DiscordUser
-	if request.session.get("access_token"):
+	if not request.session.get("access_token") or not request.session.get("user_id"):
+		return redirect_discord_login(request)
+	try:
 		oauth = DiscordToken.objects.get(user__id=request.session.get('user_id'))
-		try:
-			oauth.login()
-			context = { "user" : OAuthUser(oauth.identity()), "guilds" : OAuthGuilds(oauth.guilds()) }
-			oauth.save()
-		except DiscordToken.AuthError:
-			return redirect(auth_url_discord)
-	else:
-		url = request.build_absolute_uri().split("/")
-		url.pop()
-		return redirect("/".join([i for i in url]))
+		oauth.login()
+		context = { "user" : OAuthUser(oauth.identity()), "guilds" : OAuthGuilds(oauth.guilds()) }
+		oauth.save()
+	except (DiscordToken.DoesNotExist, DiscordToken.AuthError):
+		return redirect_discord_login(request)
 
 	discord_user = authenticate(request, user=context['user'])
 	if not isinstance(discord_user, DiscordUser):

@@ -80,6 +80,7 @@ Paste this entire block into **PowerShell**. Estimated duration: **15–60 secon
         'tests.model_test_match_bot',
         'tests.model_test_match_admin',
         'tests.model_test_admin_imports',
+        'tests.model_test_discord_auth',
         'tests.model_test_match_publication',
         'tests.model_test_match_viewer_templates',
         'tests.model_test_match_viewer_views',
@@ -105,7 +106,7 @@ Expected results for this version:
 | Check | Successful result | What it verifies |
 |---|---|---|
 | Foundation | `Ran 66 tests` and `OK (skipped=9)` | 57 executed checks. The nine skips are deliberate: those checks require the separate application runner. |
-| Application | `Ran 190 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider seams, presentation and access checks. |
+| Application | `Ran 204 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, presentation and access checks. |
 | Refresh | `tests 12`, `pass 12`, `fail 0` | Request scheduling, timeouts, stale responses, retries and related browser logic. |
 
 `Creating test database`, `Applying ... OK`, and `Destroying test database` are normal application-test messages. They refer to a generated temporary database, not your tournament database. Counts may increase in later commits; keep the commit line when reporting results.
@@ -220,7 +221,7 @@ The command prints the Windows account and expected test folder, verifies the br
 
 Steps 2–5 cover local verification. They do **not** complete deployment approval.
 
-Real OAuth login, Discord referee actions, screenshot processing and Sheets export also require test accounts and destinations. Those are covered in the [staging checklist](match-viewer-rollout.md). Do not run the README's self-hosting or deployment migration commands merely to complete this local guide. All production viewer switches remain off until the separate rollout checks pass.
+Real OAuth login, Discord referee actions, screenshot processing and Sheets export also require test accounts and destinations. Start with the [private credential preparation guide](match-viewer-staging.md), then complete the [staging checklist](match-viewer-rollout.md). Credential files alone do not configure a safe staging runtime. Session-bound OAuth validation and explicit service isolation remain required before live testing. Do not run the README's self-hosting or deployment migration commands merely to complete this local guide. All production viewer switches remain off until the separate rollout checks pass.
 
 ## Implementation boundaries
 

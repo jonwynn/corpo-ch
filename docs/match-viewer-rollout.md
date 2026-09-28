@@ -4,6 +4,7 @@ Version **1.7.0-beta.1** is unreleased. No deployment has been performed. Start 
 
 ## Before staging
 
+- Prepare credentials using the [private development service guide](match-viewer-staging.md). Its resource inventory is not runtime configuration or an enforced access boundary. Finish the isolated database/broker, destination checks and session-bound OAuth validation described there before connecting services.
 - Run the [isolated verification commands](match-viewer-development.md) and record the commit, runtime versions and results. The current tested runtime is Windows/CPython 3.14.7/Django 6.0.8; another deployment runtime needs its own checks.
 - Use a disposable MySQL database and test Discord guild, OAuth application, storage and Sheets destination. Do not point staging checks at live tournament records or channels.
 - Back up the staging database and referenced media using the deployment's established backup procedure. Keep backups outside the repository and verify that they restore. Preserve encryption keys securely; do not replace deployment keys to make migration checks pass.
@@ -102,7 +103,7 @@ Enable polling only after those checks pass. Exercise the following with real su
 - A second referee tab, delayed callback, stale admin form, role revocation and disabled account. Access loss must clear the visible match on the next validated response.
 - Temporary failure, timeout, recovery to a lower corrected score, hidden-tab resume and switching matches. Expanded details must stay open with fresh contents.
 
-Run actual Discord screenshot upload, decode/review and test Sheets export. Correct or remove the round during a delayed upload/export and confirm stale data is not restored. An external operation can finish before local rejection; inspect the test destination for duplicate/stale output. A rejected upload can leave an unreferenced file. Identify it against current database references and remove only confirmed test artifacts using the deployment's normal cleanup process.
+Run actual Discord screenshot upload, decode/review and test Sheets export. Keep scheduled jobs off for the first explicit export to the dedicated test sheet. Match and ban rows are written in separate requests; inspect partial output before retrying to avoid duplicate rows. Verify corrections preserve the Saved column in Bans Data for bansave rules. Correct or remove the round during a delayed upload/export and confirm stale data is not restored. An external operation can finish before local rejection; inspect the test destination for duplicate/stale output. A rejected upload can leave an unreferenced file. Identify it against current database references and remove only confirmed test artifacts using the deployment's normal cleanup process.
 
 Complete human visual acceptance: compare the three approved states, large full names, blue/coral separation, long text, desktop and 320–470px widths, 200% zoom, keyboard focus and saved themes. Verify real operating-system high contrast. Record exceptions before expanding the pilot.
 

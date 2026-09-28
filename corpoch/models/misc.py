@@ -93,7 +93,7 @@ class DiscordToken(models.Model):
 		self.__auth = { "client_id": settings.BOT_ID, "client_secret": settings.BOT_SECRET }
 		if not code:
 			if not self.access_token or not self.refresh_token:
-				raise AuthError("Access/Refresh token not set and code is none!")
+				raise self.AuthError("Access/Refresh token not set and code is none!")
 			else:
 				self.__data = { "grant_type": "refresh_token", "refresh_token": self.refresh_token }
 		else:
@@ -126,7 +126,7 @@ class DiscordToken(models.Model):
 		response =  self.__session.get(f"{self.__base_url}/users/@me", headers=self.__oauth_header)
 		if response.status_code == 200:
 			return response.json()
-		raise AuthError("Failed to connect to discord API")
+		raise self.AuthError("Failed to connect to discord API")
 
 	def guilds(self) -> list:
 		if not self.access_token:
@@ -135,4 +135,4 @@ class DiscordToken(models.Model):
 		response = self.__session.get(f"{self.__base_url}/users/@me/guilds", headers=self.__oauth_header)
 		if response.status_code == 200:
 			return response.json()
-		raise AuthError("Failed to connect to discord API")
+		raise self.AuthError("Failed to connect to discord API")
