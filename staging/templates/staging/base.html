@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Corpo CH local staging{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'corpoch/match_viewer.css' %}">
+    <script src="{% static 'corpoch/match_viewer.js' %}" defer></script>
+</head>
+<body class="match-viewer-page" data-theme="dark">
+<main class="mv-shell">
+    <div class="mv-toolbar">
+        <a class="mv-back-link" href="{% url 'home' %}">Local home</a>
+        <label class="mv-theme-label" for="match-viewer-theme">Appearance
+            <select id="match-viewer-theme" name="theme" data-theme-control>
+                <option value="dark" selected>Dark</option>
+                <option value="light">Light</option>
+                <option value="system">System</option>
+            </select>
+        </label>
+    </div>
+    <article class="mv-viewer">
+        <header class="mv-header"><h1>Corpo CH local staging</h1><span class="mv-audience">Development login check</span></header>
+        <div class="mv-state">{% block content %}{% endblock %}</div>
+    </article>
+    <p class="mv-connection">Local development environment · match viewing is not enabled.</p>
+</main>
+<footer class="mv-footer">Created by <a href="https://www.twitch.tv/jonw_CH">@jonw_CH on Twitch</a>. Built on Corpo CH.</footer>
+</body>
+</html>

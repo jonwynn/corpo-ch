@@ -82,6 +82,7 @@ Paste this entire block into **PowerShell**. Estimated duration: **15–60 secon
         'tests.model_test_match_admin',
         'tests.model_test_admin_imports',
         'tests.model_test_discord_auth',
+        'tests.model_test_staging_web',
         'tests.model_test_discord_backend',
         'tests.model_test_discord_token',
         'tests.model_test_match_publication',
@@ -108,13 +109,45 @@ Expected results for this version:
 
 | Check | Successful result | What it verifies |
 |---|---|---|
-| Foundation | `Ran 87 tests` and `OK (skipped=9)` | 78 executed checks, including offline staging preflight. The nine skips are deliberate: those checks require the separate application runner. |
-| Application | `Ran 252 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, presentation and access checks. |
+| Foundation | `Ran 151 tests`; Windows: `OK (skipped=23)`; Linux: `OK (skipped=12)` | Windows executes 128 checks and Linux executes 139. Skips cover model-runner and platform-specific cases. Includes configuration, service-check boundaries and local runtime safeguards without external connections. |
+| Application | `Ran 283 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, staging web routes, presentation and access checks. |
 | Refresh | `tests 12`, `pass 12`, `fail 0` | Request scheduling, timeouts, stale responses, retries and related browser logic. |
 
 `Creating test database`, `Applying ... OK`, and `Destroying test database` are normal application-test messages. They refer to a generated temporary database, not your tournament database. Counts may increase in later commits; keep the commit line when reporting results.
 
 Each Python runner starts a fresh process. The runners clear deployment variables, block dotenv reads, and restrict writes to temporary storage. They reject external network/process operations and deployment database clients. Service seams are mocked. These checks do not prove that live Discord, OAuth, storage or Sheets work, and the guards are not an operating-system sandbox.
+
+### Optional: verify the isolated staging web loader
+
+This check loads the actual staging settings, Django application, local templates, restricted routes and static-file handler in a fresh process. It uses illustrative configuration and blocks native database connections. It reads no private credentials, opens no listener and starts no database, bot or worker. The [staging runtime guide](match-viewer-staging-runtime.md) covers the separately prepared application and real login check.
+
+For the prepared **Windows Python environment**, paste this block into **normal Windows PowerShell**. Estimated duration: **2–10 seconds**; CPU only, no GPU.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    .\.venv\Scripts\python.exe -B -m tests.staging_web_smoke
+    if ($LASTEXITCODE -ne 0) { throw 'The isolated staging web check failed. Report the output.' }
+}
+```
+
+After the Linux environment has been prepared, run the same check in **Ubuntu through normal Windows PowerShell**. Estimated duration: **2–15 seconds**, including WSL startup; CPU only, no GPU. This uses the Linux environment at `~/CorpoCH/staging/venv` and does not create or install it.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    $linux_home = wsl.exe --distribution Ubuntu-24.04 --exec printenv HOME
+    if ($LASTEXITCODE -ne 0) { throw 'Ubuntu-24.04 could not start. Report the output.' }
+    $linux_home = ([string]$linux_home).Trim()
+    if (-not $linux_home.StartsWith('/home/')) { throw 'Use the prepared normal Linux account.' }
+    wsl.exe --distribution Ubuntu-24.04 --cd /mnt/c/git/corpo-ch --exec "$linux_home/CorpoCH/staging/venv/bin/python" -B -m tests.staging_web_smoke
+    if ($LASTEXITCODE -ne 0) { throw 'The isolated Linux staging web check failed. Report the output.' }
+}
+```
+
+Success prints `PASS: Fresh web runtime setup, local templates, restricted routes, static files and private logging passed.` This verifies application loading and rendering without a database connection; it does not replace the real OAuth or MySQL integration checks.
 
 ## 3. Start and open the preview
 
@@ -177,7 +210,7 @@ To stop the preview, return to its PowerShell window and press **Ctrl+C** once. 
 | Port error such as `WinError 10048` | Another process is using port 8765. If you started that preview, press **Ctrl+C** in its original PowerShell window and restart it. Otherwise use the alternate port below. Do not terminate an unidentified process. An older preview process can still show files from before an update. |
 | Colors or text are difficult to read | Record which state, browser width/zoom and theme you used, and share a screenshot of the example data. |
 
-For an occupied port, paste this alternate block into **PowerShell**. Estimated startup: **2–10 seconds**; CPU only, no GPU. Leave it running and open [the alternate preview](http://127.0.0.1:8766/?case=live_example). Use port **8766** in any other preview links while this server is running.
+For an occupied port, paste this alternate block into **PowerShell**. Estimated startup: **2–10 seconds**; CPU only, no GPU. Leave it running and open [the alternate preview](http://127.0.0.1:8767/?case=live_example). Use port **8767** in any other preview links while this server is running. Port **8766** is reserved for the separate staging website and its Discord callback.
 
 ```powershell
 & {
@@ -187,7 +220,7 @@ For an occupied port, paste this alternate block into **PowerShell**. Estimated 
     if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
         throw 'This folder is not on jons-tree-branch. Stop here.'
     }
-    .\.venv\Scripts\python.exe -m tests.viewer_preview --port 8766
+    .\.venv\Scripts\python.exe -m tests.viewer_preview --port 8767
     if ($LASTEXITCODE -ne 0) { throw 'The alternate preview could not start. Report the error.' }
 }
 ```
@@ -256,7 +289,9 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The Python and Node command pattern in step 2 was verified in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The latest combined guarded application run passed **273 tests in 19.102 seconds**, applied migrations through `corpoch.0030` and `dbot.0006`, and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **103 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver, 21 offline staging preflight cases and 25 read-only service-check cases with simulated responses. The unchanged refresh controller previously passed **12 Node tests**. All 16 PowerShell command blocks in the development, rollout, staging and Linux prerequisite guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+The Python and Node command pattern in step 2 was verified in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The complete guarded application suite passed **283 tests** on both Windows (**24.131 seconds**) and Linux (**32.301 seconds**); those runs occurred concurrently. Both applied migrations through `corpoch.0030` and `dbot.0006` and destroyed their temporary databases. The foundation runner discovered **151 tests** on each platform: **128 executed with 23 expected skips** on Windows and **139 executed with 12 expected skips** on Linux. Coverage includes private configuration, isolated provisioning, service-check boundaries and staging web behavior. The unchanged refresh controller previously passed **12 Node tests**. PowerShell blocks in this guide are syntax-checked in Windows PowerShell 5.1.
+
+The fresh-process staging web smoke passed on Windows and Linux, including actual Django setup and rendering with native database connections blocked. The prepared Linux MySQL **8.0.46/InnoDB** instance with mysqlclient **2.3.0** also passed all **eight native checks** in **3.233 seconds for the test bodies**. The isolated staging `check` and `migrate` commands passed, and the prepared website and MySQL processes started under Supervisor. Real browser OAuth remains a separate acceptance step; these results do not enable the viewer or start the bot, workers or spreadsheet exports. Use the [staging runtime guide](match-viewer-staging-runtime.md) for that environment's status, login and stop commands.
 
 The 21 referee-role tests cover primary/additional roles, same-guild validation, null primary roles, deduplicated human membership, stale membership removal, failed remote lookups, changed configuration and transactional rollback. The supported admin edit path and membership publisher coordinate on the guild row; future direct role-configuration writers must acquire that same row lock. These SQLite tests verify behavior and rollback, not MySQL scheduling of concurrent role changes. The existing eight native MySQL checks also passed after the additive role migration, with test bodies taking **1.492 seconds**; the disposable database was removed and the server stopped. Real Discord and Google acceptance remain separate from these isolated checks.
 

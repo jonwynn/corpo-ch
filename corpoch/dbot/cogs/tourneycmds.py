@@ -1,9 +1,9 @@
 import discord
 from asgiref.sync import sync_to_async
 from discord.ext import commands
+from django.conf import settings
 from django.db import transaction
 
-from corpoch import settings
 from corpoch.match_actions import MatchActionError, get_match_state_token, load_corp_context
 from corpoch.match_publication import finish_match_evidence
 from corpoch.models import Bracket, Match, Tournament

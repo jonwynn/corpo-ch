@@ -187,6 +187,7 @@ class DiscordAuthTests(TestCase):
         self.assertFalse(DiscordToken.objects.exists())
 
     def test_valid_callback_creates_user_and_token_then_continues_login(self):
+        self.assertFalse(hasattr(settings, "DISCORD_PROFILE_SYNC_ENABLED"))
         request = self.create_callback()
         response = self.views.auth(request)
         self.assertEqual(response.url, "/auth/user")
@@ -201,6 +202,33 @@ class DiscordAuthTests(TestCase):
         self.assertEqual(call.args[0], "https://discord.com/api/v10/oauth2/token")
         self.assertEqual(call.kwargs["data"]["code"], "fixture-code")
         self.assertEqual(call.kwargs["data"]["redirect_uri"], settings.REDIRECT_URI)
+
+    @override_settings(DISCORD_PROFILE_SYNC_ENABLED=False)
+    def test_disabled_profile_sync_preserves_login_without_queuing_bot_work(self):
+        self.discord_session.get.side_effect = [
+            Mock(status_code=200, json=Mock(return_value=self.identity)),
+            Mock(status_code=200, json=Mock(return_value=self.identity)),
+            Mock(status_code=200, json=Mock(return_value=[])),
+        ]
+        start = self.client.get("/auth/start")
+        state = parse_qs(urlsplit(start.url).query)["state"][0]
+        response = self.client.get("/auth", {"state": state, "code": "fixture-code"}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.session["_auth_user_id"], "8901")
+        account = DiscordUser.objects.get(id=8901)
+        self.assertEqual(account.global_name, "Fixture Player")
+        self.assertFalse(account.is_staff)
+        self.assertFalse(account.is_superuser)
+        token = DiscordToken.objects.get(user=account)
+        self.assertEqual(token.access_token, "fixture-new-access")
+        self.assertEqual(token.refresh_token, "fixture-new-refresh")
+        self.views.update_user.assert_not_called()
+
+    @override_settings(DISCORD_PROFILE_SYNC_ENABLED=True)
+    def test_explicit_profile_sync_queues_the_new_account(self):
+        request = self.create_callback()
+        self.assertEqual(self.views.auth(request).url, "/auth/user")
+        self.views.update_user.assert_called_once_with("8901")
 
     def test_valid_callback_updates_existing_token_without_duplicate_account(self):
         token = self.create_token()

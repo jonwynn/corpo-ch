@@ -31,11 +31,11 @@ The full development permission profile follows the existing installation guidan
 
 This profile has permission value `378225675264`; it is broader than the five message/channel permissions needed for an initial referee-tool test. Administrator is not required. Check development-channel overrides after installation. Human testers also need Use Application Commands in that channel. [Discord permission reference](https://docs.discord.com/developers/topics/permissions)
 
-For a private development bot, set **Installation > Install Link** to **None**, then **Bot > Public Bot** off. Use an explicit OAuth2 URL generated with the scopes and permissions above, selecting Guild Install. A Discord Provided Link instead uses saved default install settings. Leave **Interactions Endpoint URL** blank because the implementation receives interactions through its Gateway connection. The website OAuth callback will be supplied with the isolated staging launcher.
+For a private development bot, set **Installation > Install Link** to **None**, then **Bot > Public Bot** off. Use an explicit OAuth2 URL generated with the scopes and permissions above, selecting Guild Install. A Discord Provided Link instead uses saved default install settings. Leave **Interactions Endpoint URL** blank because the implementation receives interactions through its Gateway connection. The local website's OAuth callback is exactly `http://127.0.0.1:8766/auth`; register it only on the dedicated development application before the [browser-login check](match-viewer-staging-runtime.md#5-start-the-website-and-test-login).
 
 The bot's role is separate from the roles assigned to human referees. Record the human referee role IDs for staging setup, but do not add an extra field to `staging-resources.json`; its current format does not accept one. After applying `dbot.0006`, the guild administration form supports the existing **Discord Ref Role** and optional **Additional Discord Ref Roles**. A member with any configured active role in that guild can start a match; no administrator grant is needed. Foreign-guild and deleted roles are excluded.
 
-After changing the selected roles, run the guild's **Update Discord Info** action in the isolated staging application, or wait for its configured guild-refresh job. A successful refresh stores the union of human members from those roles and removes stale referee membership. The website checks those stored memberships on its next request; it does not contact Discord on every viewer refresh. Changing role selection alone does not immediately refresh website access. The staging database must also contain an active tournament and an active bracket using the test channel as its score-log channel before `/tourney match` can start a match.
+In the later bot-capable stage, changing the selected roles must be followed by the guild's **Update Discord Info** action or its configured guild-refresh job. A successful refresh stores the union of human members from those roles and removes stale referee membership. The website checks those stored memberships on its next request; it does not contact Discord on every viewer refresh. Changing role selection alone does not immediately refresh website access. The current web-only checkpoint has no administration route or guild-refresh worker and grants no staff access through login. The future match pilot also needs an active tournament and bracket using the test channel as its score-log channel before `/tourney match` can start a match.
 
 ## 1. Enter the two Discord credentials
 
@@ -68,7 +68,7 @@ In `dev-credentials.env`, use these values from that same application:
 
 For a newly created application, use its own credentials; the original Corpo application's credentials are not needed. If someone else manages the selected development application, obtain its credentials privately from that owner. Coordinate before resetting credentials or starting a second instance of the same application. Do not use production credentials. The [Discord OAuth2 documentation](https://docs.discord.com/developers/topics/oauth2) describes the client ID, client secret and authorization-code flow.
 
-Keep these values out of terminal commands, chat, screenshots and the repository's `.env` file. The prepared file is not loaded by the application yet. A callback address will be supplied with the isolated staging launcher; do not change production OAuth redirects.
+Keep these values out of terminal commands, chat, screenshots and the repository's `.env` file. This credential file is not automatically loaded by the web launcher. A maintainer copies only the development OAuth client secret into its separate private Linux configuration. The callback is `http://127.0.0.1:8766/auth`; do not change production OAuth redirects.
 
 If the offline preflight passes but step 4 reports **Discord bot identity: credentials were rejected**, Discord rejected the saved `BOT_TOKEN`. The preflight checks file structure, not whether a credential works. Reopen the private file with the command above and replace only `BOT_TOKEN` with the token for the selected development application. The application ID, Public Key and OAuth2 client secret cannot replace it. If the current token is unavailable, use **Reset Token** on that application's Bot page, then save the new token; resetting invalidates the previous token for that application. See [Discord's credential instructions](https://docs.discord.com/developers/quick-start/getting-started#fetching-your-credentials). Save with **Ctrl+S**, close the credential tab and rerun step 4. Keep `BOT_SECRET` and the Google key unchanged unless their own checks require a correction.
 
@@ -199,7 +199,7 @@ Success reports the expected bot identity, Server Members Intent configuration, 
 
 A pass does not verify effective channel write permissions, individual human memberships, Gateway startup, the OAuth callback or export formatting/protected ranges. Those remain controlled staging checks. Role discovery alone does not configure the application's referee authorization.
 
-After all read-only checks pass, continue with [local Linux runtime preparation](match-viewer-staging-runtime.md). The Windows pilot uses Ubuntu on WSL 2 for the complete service runtime; installing only a broker would leave native Windows Celery unsupported. The existing Windows preview and isolated checks remain available.
+After all read-only checks pass, continue with [local Linux runtime preparation](match-viewer-staging-runtime.md). The first Linux checkpoint runs only the local website and a fresh MySQL instance under Supervisor. Keep the guide's Ubuntu session open in one window and run its control commands in a second PowerShell window; Supervisor alone does not keep WSL running. Bot, worker, scheduler, game-server and export startup are deferred. The existing Windows preview and isolated checks remain available.
 
 ## Login changes available for staging
 
@@ -211,14 +211,18 @@ Discord requests now have connection/read timeouts and sanitized failure message
 
 Browser and scheduled renewal coordinate on the same token row. Renewal holds that row while waiting for Discord, with 5-second connection and 15-second read timeouts; these are not a total request deadline. Match rows are not locked by this operation. The native MySQL tests verify the controlled overlap cases with mocked HTTP; the pilot must also check login latency and database timeout behavior under its own settings.
 
-## Work required before service testing
+## Current checkpoint and remaining service gates
 
-Credential preparation and read-only verification precede runtime setup. The following implementation and configuration work must finish before starting the real application:
+The [web-only launcher](match-viewer-staging-runtime.md) uses explicit private settings, a generated local MySQL schema on port 3308, private media storage, fresh session/encryption keys and the development application's OAuth client secret. The website listens on `127.0.0.1:8766`. All viewer gates remain off. The launcher does not import production settings, launch the bot, contact a Redis broker, run scheduled jobs or expose export routes. Signing in creates or updates the local account and session without granting staff privileges.
 
-- A fresh staging database and media directory, an explicit local MySQL port, and a separate Redis/broker environment. The disposable MySQL checker is not a persistent staging installation. Do not copy the production database or reuse its queues.
-- Enforced development application, guild, channel and spreadsheet destinations. `HOME_GUILD_ID` alone does not restrict bot activity. Normal startup restores stored matches and may synchronize commands; workers can publish stored submissions.
-- Live verification of the new session-bound OAuth flow, expiry recovery and failure behavior against the development application. Isolated tests do not establish remote credential acceptance.
-- A development human-referee role ID and test accounts, and registration of the exact staging OAuth callback. If the same development application already runs elsewhere, coordinate before starting another instance. A separate self-owned application does not require the original application's credentials.
-- One explicit export to the test spreadsheet, with output inspected before any retry. Existing match and ban exports use separate requests; partial failure can leave output that a blind retry duplicates. Keep scheduled jobs off during the first export.
+The next manual check is the real browser consent and callback flow. Credential metadata checks and isolated tests do not prove `BOT_SECRET` acceptance, callback registration, browser-session recovery or account permissions. Register exactly `http://127.0.0.1:8766/auth` in the DEV application, then follow the runtime guide. Do not share callback URLs or cookie values when reporting a failure.
 
-Do not use the README's normal startup commands to bypass this checkpoint. Continue with the [rollout checklist](match-viewer-rollout.md) after the isolated staging setup is reviewed.
+Before the bot and export stages, complete these remaining gates:
+
+- Enforce the development application, guild, channel and spreadsheet at outbound operations. `HOME_GUILD_ID` and the inventory alone do not restrict bot activity. Ordinary startup restores stored matches and may synchronize commands.
+- Prepare separate Redis queues and restricted worker/scheduler configuration. The web-only process uses no live broker. The disposable Windows MySQL checker remains separate from the persistent staging database.
+- Configure the two human-referee roles, refresh memberships, and prepare the test tournament, bracket and accounts. Coordinate before starting another instance of a development application that runs elsewhere.
+- Verify effective test-channel permissions and live match callbacks, then approve staff-viewer access explicitly. Login alone is not that approval.
+- Perform one explicit export to the test spreadsheet and inspect its output before retrying. Match and ban exports use separate requests, so partial failure can leave output that a blind retry duplicates. Keep scheduled publication off during this check.
+
+Use the runtime guide's named Supervisor commands, not the README's complete production startup sequence. Continue with the [rollout checklist](match-viewer-rollout.md) before enabling the staff viewer.

@@ -1,6 +1,7 @@
 import requests_cache, json, io, hashlib, re, gspread, asyncio, discord, os, uuid, platform, subprocess, pytesseract, shutil
 
 from datetime import datetime
+from django.conf import settings
 from django.db import models
 from PIL import Image, ImageEnhance
 from pydantic import BaseModel
@@ -8,7 +9,6 @@ from random import randbytes
 from typing import Optional, Union, Literal
 
 from corpoch import __user_agent__
-from corpoch import settings
 from corpoch.models import GSheetAPI, Chart, Tournament, Match, Qualifier, QualifierSubmission, TournamentPlayer
 from corpoch.types import StegScreenshot, SearchResponse, CH_DIFFICULTIES, CH_INSTRUMENTS, CH_VERSIONS
 from corpoch.utils.snghandler import SNGHandler

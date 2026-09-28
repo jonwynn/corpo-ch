@@ -1,0 +1,8 @@
+{% extends "staging/base.html" %}
+{% block title %}Discord sign-in verified · Corpo CH local staging{% endblock %}
+{% block content %}
+    <h2>Discord sign-in verified</h2>
+    <p>Signed in as {{ user.display_name|default:user.username }}.</p>
+    <p>Signing in does not grant referee access. Match viewing will be enabled after database verification and test match setup.</p>
+    <p><a href="{% url 'home' %}">Return to the local home page</a></p>
+{% endblock %}

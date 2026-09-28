@@ -1,8 +1,8 @@
 import requests, tarfile, io, re, time, os, shutil
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from corpoch.models import CHIcon, Chart
 from corpoch.dbot.models import CHEmoji
-from corpoch import settings
 import corpoch.dbot.tasks 
 
 class Command(BaseCommand):

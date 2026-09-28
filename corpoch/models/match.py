@@ -1,13 +1,13 @@
 import uuid
 from itertools import chain
 
+from django.conf import settings
 from django.db import models
 
 from django_pydantic_field import SchemaField
 from polymorphic.managers import PolymorphicForwardManyToOneDescriptor, PolymorphicReverseManyToOneDescriptor, Nullable
 from polymorphic.models import PolymorphicModel
 
-from corpoch import settings
 from corpoch.types import CHART_CATEGORIES, StegScreenshot, CH_Name
 from corpoch.dbot.view.helpers import build_stats_embed, build_full_stats_embed
 

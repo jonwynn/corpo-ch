@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError, transaction
@@ -71,7 +72,7 @@ def auth(request: HttpRequest):
             oauth = token
     except DatabaseError:
         return discord_login_error(request, status=503)
-    if created:
+    if created and getattr(settings, "DISCORD_PROFILE_SYNC_ENABLED", True):
         update_user(user.id)
     request.session["access_token"] = oauth.access_token
     request.session["user_id"] = user.id

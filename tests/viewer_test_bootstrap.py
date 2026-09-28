@@ -4,6 +4,7 @@ import importlib
 import importlib.abc
 import os
 from pathlib import Path
+import stat
 import sys
 import tempfile
 import unittest
@@ -123,17 +124,48 @@ class ViewerTestEnvironment:
         if self.environment_patch is not None:
             self.environment_patch.stop()
 
-    def validate_storage_path(self, value):
+    def resolve_descriptor_path(self, descriptor, require_directory=False):
+        """Resolves an open Linux descriptor without trusting a stale path.
+
+        :param int descriptor: Open file or directory descriptor
+        :param bool require_directory: Whether a directory descriptor is required
+        :return: Current resolved filesystem path"""
+        if sys.platform != "linux" or not isinstance(descriptor, int) or isinstance(descriptor, bool):
+            raise BlockedTestOperation("Unsupported test storage descriptor.")
+        try:
+            descriptor_stat = os.fstat(descriptor)
+            if require_directory and not stat.S_ISDIR(descriptor_stat.st_mode):
+                raise BlockedTestOperation("Test storage descriptor is not a directory.")
+            target = os.readlink(f"/proc/self/fd/{descriptor}")
+            if target.endswith(" (deleted)") or not Path(target).is_absolute():
+                raise BlockedTestOperation("Test storage descriptor has no current path.")
+            resolved = Path(target).resolve(strict=True)
+            path_stat = resolved.stat()
+            if (descriptor_stat.st_dev, descriptor_stat.st_ino) != (path_stat.st_dev, path_stat.st_ino):
+                raise BlockedTestOperation("Test storage descriptor changed during inspection.")
+        except (OSError, ValueError) as error:
+            raise BlockedTestOperation("Invalid test storage descriptor.") from error
+        self.validate_storage_path(resolved)
+        return resolved
+
+    def validate_storage_path(self, value, directory_descriptor=None):
         """
         Requires file mutations to remain in temporary test storage
 
         :param object value: File path from a Python audit event
+        :param int directory_descriptor: Optional base for a relative path
+        :return: Resolved path within temporary storage
         """
-        if isinstance(value, int) or value is None:
-            return
-        resolved = Path(os.fsdecode(value)).resolve()
+        if isinstance(value, int):
+            return self.resolve_descriptor_path(value)
+        path = Path(os.fsdecode(value))
+        if not path.is_absolute() and directory_descriptor not in (None, -1):
+            directory = self.resolve_descriptor_path(directory_descriptor, require_directory=True)
+            path = directory / path
+        resolved = path.resolve()
         if resolved != self.directory and self.directory not in resolved.parents:
             raise BlockedTestOperation("File mutation outside test storage.")
+        return resolved
 
     def check_operation(self, event, arguments):
         """
@@ -175,11 +207,19 @@ class ViewerTestEnvironment:
                     isinstance(mode, str) and any(value in mode for value in "wax+")
                 ):
                     self.validate_storage_path(path)
-        elif event in {"os.remove", "os.rmdir", "os.mkdir", "os.chmod", "os.utime"}:
-            self.validate_storage_path(arguments[0])
-        elif event in {"os.rename", "os.link", "os.symlink"}:
-            self.validate_storage_path(arguments[0])
-            self.validate_storage_path(arguments[1])
+        elif event in {"os.remove", "os.rmdir"}:
+            self.validate_storage_path(arguments[0], arguments[1])
+        elif event in {"os.mkdir", "os.chmod"}:
+            self.validate_storage_path(arguments[0], arguments[2])
+        elif event == "os.utime":
+            self.validate_storage_path(arguments[0], arguments[3])
+        elif event in {"os.rename", "os.link"}:
+            self.validate_storage_path(arguments[0], arguments[2])
+            self.validate_storage_path(arguments[1], arguments[3])
+        elif event == "os.symlink":
+            destination = self.validate_storage_path(arguments[1], arguments[2])
+            source = Path(os.fsdecode(arguments[0]))
+            self.validate_storage_path(source if source.is_absolute() else destination.parent / source)
 
 
 def run_tests():

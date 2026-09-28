@@ -12,13 +12,15 @@ This fork adds a read-only live match viewer for tournament staff on the existin
 - [Viewer contract and rule decisions](docs/match-viewer-contract.md)
 - [Beginner PowerShell guide: local checks and preview](docs/match-viewer-development.md)
 - [Private development credentials and test-service preparation](docs/match-viewer-staging.md)
-- [Local Linux runtime prerequisite for the service pilot](docs/match-viewer-staging-runtime.md)
+- [Local Linux website: setup, Supervisor controls and login check](docs/match-viewer-staging-runtime.md)
 - [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
 - [Changelog](CHANGELOG.md)
 
 The explicit CORP Cup profile uses four opening ban/save actions, higher-seed first pick and subsequent loser picks. The website and bot share validated recorded state; continuous in-song statistics have no verified data source. Native browser refresh retains the last valid result during temporary failures and rechecks staff access on every request.
 
 The implementation has isolated tests and a local fixture preview. Eight native MySQL checks, including OAuth concurrency, also pass on the prepared local test instance. It is **not deployed**. Viewer, polling and MySQL verification switches default off. Deployment-specific database checks, live OAuth/Discord/provider checks and final human visual acceptance remain rollout gates. Existing overlay and non-CORP rule paths remain available.
+
+The first Linux staging checkpoint runs only the local website and a fresh MySQL database under Supervisor. Private configuration stays outside the repository, and production settings are not loaded. The prepared-instance guide includes exact PowerShell start/stop commands and the manual Discord login check. Bot, worker and export testing follow separately.
 
 ## Links
 

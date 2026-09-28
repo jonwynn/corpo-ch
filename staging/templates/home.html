@@ -1,0 +1,7 @@
+{% extends "staging/base.html" %}
+{% block content %}
+    {% if discord_login_error %}<p role="alert">{{ discord_login_error }}</p>{% endif %}
+    <p>Sign in to verify the local Discord connection.</p>
+    <p><a href="{{ auth_url }}">Discord Login</a></p>
+    <p>Bot commands, background jobs and spreadsheet exports are not running in this web environment.</p>
+{% endblock %}

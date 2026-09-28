@@ -1,5 +1,6 @@
 """Checks real model storage and the isolated Django bootstrap boundary."""
 
+import ast
 import importlib
 import json
 import os
@@ -7,6 +8,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -123,6 +125,50 @@ class ViewerModelBootstrapBoundaryTests(unittest.TestCase):
         self.assertEqual(settings.DATABASES["default"]["ENGINE"], "django.db.backends.sqlite3")
         self.assertEqual(settings.CELERY_BROKER_URL, "memory://")
         self.assertNotIn("MYSQL_HOST", os.environ)
+
+    def test_application_consumers_do_not_import_deployment_settings_directly(self):
+        application = Path(__file__).parents[1] / "corpoch"
+        violations = []
+        for source in application.rglob("*.py"):
+            for node in ast.walk(ast.parse(source.read_text(encoding="utf-8"))):
+                if isinstance(node, ast.ImportFrom):
+                    direct = node.module == "corpoch.settings" or (
+                        node.module == "corpoch" and any(name.name == "settings" for name in node.names)
+                    )
+                else:
+                    direct = isinstance(node, ast.Import) and any(
+                        name.name == "corpoch.settings" for name in node.names
+                    )
+                if direct:
+                    violations.append(f"{source.relative_to(application)}:{node.lineno}")
+        self.assertEqual(violations, [])
+
+    def test_match_embed_uses_active_settings_despite_a_different_direct_module(self):
+        from django.conf import settings
+        from django.test import override_settings
+        from corpoch import settings as direct_settings
+        from corpoch.models import match as match_models
+
+        round_record = SimpleNamespace(
+            steg={}, match="Fixture match", num=1,
+            screenshot=SimpleNamespace(url="/fixture-media/result.png"),
+            chart=SimpleNamespace(icon=SimpleNamespace(img=SimpleNamespace(url="/fixture-media/icon.png"))),
+        )
+        with override_settings(BASE_URL="alternate-viewer.invalid"):
+            self.assertNotEqual(direct_settings.BASE_URL, settings.BASE_URL)
+            for property_name, builder_name in (
+                ("steg_embed", "build_stats_embed"),
+                ("full_steg_embed", "build_full_stats_embed"),
+            ):
+                with self.subTest(property=property_name), patch.object(match_models, builder_name):
+                    embed = getattr(match_models.MatchRoundAbstract, property_name).fget(round_record)
+                    embed.set_thumbnail.assert_called_once_with(
+                        url="https://alternate-viewer.invalid/fixture-media/result.png",
+                    )
+                    embed.set_footer.assert_called_once_with(
+                        text=embed.footer.text,
+                        icon_url="https://alternate-viewer.invalid/fixture-media/icon.png",
+                    )
 
     def test_services_and_native_database_imports_remain_blocked(self):
         for name in (
