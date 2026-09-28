@@ -8,6 +8,8 @@ mysqlclient
 celery
 django-multiselectfield
 django-fernet-encrypted-fields
+# Historical migration 0001 imports this field; current models use the package above.
+django-encrypted-json-fields==1.0.5
 django-admin-sortable2
 django-admin-logs
 django-rest-framework

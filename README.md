@@ -13,7 +13,7 @@ This fork is preparing a read-only live match viewer for tournament staff on the
 - [Foundation tests and validation limits](docs/match-viewer-development.md)
 - [Changelog](CHANGELOG.md)
 
-The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. CORP Cup uses opening-only bans, higher-seed first pick and subsequent loser picks. Database integration is paused because the initial migration requires a legacy encryption dependency absent from the current requirements; see the development notes before running migration tests.
+The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. CORP Cup uses opening-only bans, higher-seed first pick and subsequent loser picks. The historical migration dependency is restored and fresh database tests pass; see the development notes for validation limits.
 
 ## Links
 

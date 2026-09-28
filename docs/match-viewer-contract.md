@@ -4,7 +4,7 @@ Application development version: **1.7.0-beta.1**, unreleased. Internal fixture 
 
 The first release adds one read-only match viewer to the existing website for tournament staff. It uses Django templates and HTMX refreshes, with the approved navy, blue and coral layout. It shows recorded match progress. Continuous gameplay scores, note hits, combo and accuracy have no verified data source and are outside this release.
 
-This foundation defines expected behavior, isolated rule calculations and a pure presentation builder. It does not add production routes, migrations or match-rule changes. CORP Cup match flow is confirmed below; deployment configuration and writer integration remain unverified. Database work is paused at the historical migration dependency described in the [development notes](match-viewer-development.md).
+This foundation defines expected behavior, isolated rule calculations and a pure presentation builder. It does not add production routes, migrations or match-rule changes. CORP Cup match flow is confirmed below; deployment configuration and writer integration remain unverified. The historical migration dependency is restored and the isolated fresh-database gate passes; see the [development notes](match-viewer-development.md).
 
 ## CORP Cup rules
 
@@ -226,6 +226,6 @@ Visual review compares each approved checkpoint against the reference at matchin
 
 The foundation checkpoint requires fixture/contract checks and proof that isolated execution rejects unexpected external access. No production service, credentials or database is needed. A fixture test is not a migration, MySQL consistency, OAuth, bot or browser test.
 
-Before Stage 2 changes schema or chooser behavior, resolve the historical migration dependency and pass the isolated database gate. The confirmed ban/save and match-tiebreaker examples already exercise pure calculations; they must also verify production writers. Subsequent stages must prove coordinated writer/reader behavior, additive migration compatibility, staff login/access, refresh/visual behavior and measured cost. Keep the old overlay available. Disable the new viewer before rolling back to writers that cannot maintain provenance; retain columns and mark affected metadata unknown or restrict resumption to newly created matches.
+The isolated fresh-database prerequisite for Stage 2 passes. The confirmed ban/save and match-tiebreaker examples already exercise pure calculations; they must also verify production writers. Subsequent stages must prove coordinated writer/reader behavior, additive migration compatibility, staff login/access, refresh/visual behavior and measured cost. Keep the old overlay available. Disable the new viewer before rolling back to writers that cannot maintain provenance; retain columns and mark affected metadata unknown or restrict resumption to newly created matches.
 
 Stop for operator review on access leaks, incorrect identity/color mapping, false picker/ban claims, inconsistent scores, unresolved write races or excessive read cost. The viewer never repairs official results, resubmits exports or publishes screenshots automatically.

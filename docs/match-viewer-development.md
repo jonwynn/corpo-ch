@@ -57,18 +57,18 @@ The combined guarded application check passes **49 tests**: 15 rule tests, 30 pr
 
 The repository has no configured project-wide formatter or linter command. Validation uses focused tests, syntax inspection and Git whitespace checks. MySQL transactions, OAuth, Discord, screenshot processing, exports and browser rendering remain later verification gates. The existing Python minimum-version declaration and missing Hydra initialization path also need application-runtime checks before deployment.
 
-## Blocked database gate
+## Fresh database gate
 
-The database smoke test currently fails while loading [`0001_initial.py`](../corpoch/migrations/0001_initial.py): it imports `encrypted_json_fields.fields`, which is absent from the current environment and [`requirements.txt`](../requirements.txt). A later migration switches to `encrypted_fields.fields`; the listed `django-fernet-encrypted-fields` dependency supplies that newer module. Successful model import does not resolve the historical migration import.
+[`0001_initial.py`](../corpoch/migrations/0001_initial.py) imports `encrypted_json_fields.fields`. [`requirements.txt`](../requirements.txt) now retains the required `django-encrypted-json-fields==1.0.5` dependency alongside `django-fernet-encrypted-fields`, which current models use. The inspected wheel matches the SHA256 published by [PyPI](https://pypi.org/project/django-encrypted-json-fields/1.0.5/). No historical migration or deployment encryption setting was changed.
 
-The following PowerShell command reproduces the blocked gate using temporary SQLite storage. Estimated duration: 2–10 seconds to the current failure; CPU only, no GPU. It does not connect to a deployment database.
+The following PowerShell command applies the existing migrations and runs database and boundary checks using temporary SQLite storage. Estimated duration: 3–15 seconds; CPU only, no GPU. It does not connect to a deployment database. Install the declared requirements in the intended development environment first.
 
 ```powershell
 .\.venv\Scripts\python.exe -m tests.viewer_model_test_bootstrap
 ```
 
-Expected current result: `ModuleNotFoundError: No module named 'encrypted_json_fields'`. No dependency was installed, migration rewritten, replacement module aliased or migration disabled to obtain a passing result.
+The repaired gate passes **nine tests**, applies the existing migration history through `corpoch.0029` and `dbot.0005`, verifies no pending loaded migrations, and destroys the disposable database afterward. Checks include current encrypted credential roundtrips, absence of plaintext values in raw storage and historical field reconstruction without legacy encryption-key lookup. The foundation suite now passes 44 tests with nine explicit model-only skips.
 
-The next prerequisite is to identify and verify the legacy dependency, restore migration loading in an isolated environment and rerun the complete database gate. Its compatibility with the current Django/Python versions is unverified. Stop for review before schema or referee-write changes; a passing pure suite does not remove this blocker.
+This verifies fresh database creation on the recorded Python/Django runtime. It does not prove MySQL behavior or conversion of credentials encrypted before migration `0003`. That historical migration changes the field definition without a data-conversion operation, and the two packages use different key configuration and value encoding. Existing deployment credentials were not accessed or re-encrypted.
 
-Once that gate passes, integrate the proposed `corp_cup` mode, minimum provenance fields and coordinated writers, preserving existing tournament profiles. Then build the approved fixture layout, connect one selected match, add refresh/error handling, verify integration and prepare a limited staff rollout. Keep the existing overlay available throughout.
+The next stage integrates the proposed `corp_cup` mode, minimum provenance fields and coordinated writers, preserving existing tournament profiles. Then build the approved fixture layout, connect one selected match, add refresh/error handling, verify integration and prepare a limited staff rollout. Keep the existing overlay available throughout.
