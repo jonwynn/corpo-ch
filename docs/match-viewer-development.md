@@ -84,6 +84,9 @@ Paste this entire block into **PowerShell**. Estimated duration: **15–60 secon
         'tests.model_test_discord_auth',
         'tests.model_test_staging_web',
         'tests.model_test_staging_viewer_fixture',
+        'tests.model_test_staging_discord_fixture',
+        'tests.model_test_staging_discord_controls',
+        'tests.model_test_staging_discord_pilot',
         'tests.model_test_discord_backend',
         'tests.model_test_discord_token',
         'tests.model_test_match_publication',
@@ -111,7 +114,7 @@ Expected results for this version:
 | Check | Successful result | What it verifies |
 |---|---|---|
 | Foundation | `Ran 171 tests`; Windows: `OK (skipped=23)`; Linux: `OK (skipped=12)` | Skips cover model-runner and platform-specific cases. Includes configuration, service-check boundaries, DEV referee metadata validation and local runtime safeguards without external connections. |
-| Application | `Ran 300 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, staging web and sample fixtures, presentation and access checks. |
+| Application | `Ran 349 tests`; Windows: `OK (skipped=1)`; Linux: `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider/OAuth seams, staging web/sample/Discord controls, presentation and access. Windows skips the Linux-only session-lock test. |
 | Refresh | `tests 12`, `pass 12`, `fail 0` | Request scheduling, timeouts, stale responses, retries and related browser logic. |
 
 `Creating test database`, `Applying ... OK`, and `Destroying test database` are normal application-test messages. They refer to a generated temporary database, not your tournament database. Counts may increase in later commits; keep the commit line when reporting results.
@@ -294,7 +297,7 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The complete guarded application suite passes **300 tests** on Windows and Linux, applying migrations through `corpoch.0030` and `dbot.0006` and removing its temporary databases. The foundation runner discovers **171 tests** on each platform: **148 execute with 23 expected skips** on Windows and **159 execute with 12 expected skips** on Linux. This includes 20 DEV referee-metadata checks and 14 sample-fixture tests. The refresh controller passes **12 Node tests**. Fresh-process staging web smoke checks pass on both platforms. The sample PowerShell helper was also exercised in Windows PowerShell **5.1.26100.9444**.
+The complete guarded application suite discovers **349 tests**: **348 pass with one Linux-only skip on Windows** in **34.606 seconds**, and **349 pass on Linux** in **39.428 seconds**. Both apply migrations through `corpoch.0030` and `dbot.0006` and remove their temporary databases. The foundation runner discovers **171 tests** on each platform: **148 execute with 23 expected skips** on Windows and **159 execute with 12 expected skips** on Linux. This includes 20 DEV referee-metadata checks and 14 sample-fixture tests. The refresh controller passes **12 Node tests**. Fresh-process staging web smoke checks pass on both platforms. The sample PowerShell helper was also exercised in Windows PowerShell **5.1.26100.9444**. The [DEV Discord pilot](match-viewer-discord-pilot.md) adds 49 fixture, callback and gateway-boundary test cases. Its no-connection preflight passes against the actual Linux profile and MySQL sample from Windows PowerShell 5.1; all 28 current guide blocks parse there. Live Discord interaction acceptance remains a manual checkpoint.
 
 The prepared Linux MySQL **8.0.46/InnoDB** instance with mysqlclient **2.3.0** passes **13 native checks** in **5.451 seconds for the test bodies**, with disposable-database cleanup. Real Discord login and DEV referee membership are verified separately. The synthetic sample renders through the actual private web profile and stored browser session; automatic score/pick updates, expanded details and undo back to 0–0 were observed in the browser. A first selected-match page used **12 queries**, **9,255 bytes** and **0.086 seconds**; its fragment used **12 queries**, **6,954 bytes** and **0.027 seconds**. These are single local observations, not capacity measurements. The sample is left in its opening state with automatic refresh enabled. No bot, worker, scheduler, game server or export process is running. Use the [sample guide](match-viewer-local-pilot.md) for manual testing and the [runtime guide](match-viewer-staging-runtime.md) for start/stop instructions.
 
@@ -322,6 +325,6 @@ Historical migration `0001` requires `django-encrypted-json-fields==1.0.5`; that
 
 The earlier eight-check native suite passed, including concurrent OAuth attempt consumption, browser/scheduled token renewal and a callback overlapping renewal. The eight test bodies completed in **1.512 seconds** on the same local MySQL instance; the disposable database was removed and the owned server stopped. Discord HTTP and task dispatch were mocked. This verified the controlled MySQL interleavings, not real Discord acceptance. The offline staging preflight also read the private inventory successfully and correctly reported both blank Discord fields and the missing Google key without revealing values.
 
-General preview behavior has been confirmed locally. Detailed human visual acceptance still needs explicit coverage of the three approved states against the reference, long text, 320–470px width, desktop, 200% zoom and operating-system high contrast. Forced-color CSS is present, but real OS high-contrast behavior remains unverified. The general preview report and automated checks do not approve those individual cases automatically.
+The current desktop sample appearance has been accepted. Detailed visual acceptance still needs explicit coverage of the three approved states against the reference, long text, 320–470px width, 200% zoom and operating-system high contrast. Forced-color CSS is present, but real OS high-contrast behavior remains unverified. The general preview report and automated checks do not approve those individual cases automatically.
 
 Keep bracket rules, chart/setlist configuration and seed assignments fixed during an active pilot match. Those separate admin/configuration writes are not all coordinated by the match action lock. See the rollout checklist for corrections, pause conditions and rollback.

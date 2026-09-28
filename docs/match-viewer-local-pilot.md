@@ -2,6 +2,8 @@
 
 Version **1.7.0-beta.1**, unreleased. Complete the [local login setup](match-viewer-staging-runtime.md) first. These commands operate the prepared WSL sample; they do not provision a fresh clone.
 
+The current desktop appearance has been accepted. The next integration check is the [restricted DEV Discord session](match-viewer-discord-pilot.md), which uses the same sample and viewer. Detailed narrow-screen, zoom and high-contrast review remains separate.
+
 The sample uses the real MySQL database, match actions, staff access checks and viewer. Its players and charts are fictional. The website remains read-only. Picks and results below change only `local-viewer-pilot` in the isolated staging schema. No Discord messages, game server, background worker or spreadsheet exports are involved.
 
 Keep **Window 1 at its Ubuntu prompt** and run commands in **Window 2, normal Windows PowerShell**. Keep the two local staging processes running using the existing start instructions. Open [the sample match](http://127.0.0.1:8766/match-viewer/local-viewer-pilot/) in the browser where Discord sign-in succeeded. The local home page also has an **Open sample match viewer** link.
