@@ -20,6 +20,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
 from django.db import DatabaseError, connection, connections, transaction
 from django.test import RequestFactory, TransactionTestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from corpoch import discord_oauth, match_actions
@@ -32,7 +33,8 @@ from corpoch.match_viewer import build_match_presentation
 from corpoch.match_viewer_reader import ViewerReadError, match_read_transaction, read_match_snapshot
 from corpoch.match_viewer_views import match_viewer_state
 from corpoch.models import (
-    Bracket, DiscordToken, DiscordUser, GroupSeed, Match, Tournament, TournamentPlayer,
+    Bracket, DiscordToken, DiscordUser, Group, GroupSeed, Match, MatchBan, MatchRound,
+    Tournament, TournamentPlayer,
 )
 from corpoch.types import CH_Name, PlayerConfig
 from tests.match_fixtures import create_corp_match
@@ -641,6 +643,81 @@ class MysqlMatchViewerChecks(TransactionTestCase):
         self.assertNotContains(response, self.seeds[0].player.ch_name, status_code=403)
         DiscordUser.objects.filter(pk=self.staff.pk).update(is_active=True)
         self.assertEqual(match_viewer_state(request, self.match.pk).status_code, 200)
+
+    @override_settings(MATCH_VIEWER_ENABLED=True, MATCH_VIEWER_MYSQL_VERIFIED=True)
+    def test_selected_fragment_query_count_and_payload_stay_unchanged_with_unrelated_matches(self):
+        self.select_first_chart()
+        request = RequestFactory().get("/match-viewer/local-check/state/")
+        request.user = self.staff
+        with CaptureQueriesContext(connection) as before:
+            initial_response = match_viewer_state(request, self.match.pk)
+        self.assertEqual(initial_response.status_code, 200)
+        self.assertIn("no-store", initial_response["Cache-Control"])
+        self.assertContains(initial_response, self.charts[4].name)
+        self.assertIsNone(connection.connection)
+
+        other_group = Group.objects.create(bracket=self.match.group.bracket, name="B")
+        other_seeds = [
+            GroupSeed.objects.create(group=other_group, player=seed.player, seed=seed.seed)
+            for seed in self.seeds
+        ]
+        unrelated_matches = [
+            Match(
+                id=f"unrelated-populated-{number}",
+                group=self.match.group if number < 80 else other_group,
+            )
+            for number in range(100)
+        ]
+        Match.objects.bulk_create(unrelated_matches)
+        assignments = []
+        bans = []
+        rounds = []
+        for match in unrelated_matches:
+            seeds = self.seeds if match.group_id == self.match.group_id else other_seeds
+            assignments.extend(
+                Match.players.through(match_id=match.pk, groupseed_id=seed.pk)
+                for seed in seeds
+            )
+            bans.extend(
+                MatchBan(
+                    match=match, num=number, player_id=seeds[owner].player_id,
+                    chart=self.charts[number], action_phase="opening",
+                )
+                for number, owner in enumerate((0, 1, 1, 0))
+            )
+            rounds.append(MatchRound(
+                match=match, num=1, chart=self.charts[4],
+                picked_id=seeds[0].player_id, selection_kind="player",
+            ))
+        Match.players.through.objects.bulk_create(assignments)
+        MatchBan.objects.bulk_create(bans)
+        MatchRound.objects.bulk_create(rounds)
+
+        with CaptureQueriesContext(connection) as after:
+            populated_response = match_viewer_state(request, self.match.pk)
+        self.assertEqual(populated_response.status_code, 200)
+        self.assertEqual(populated_response.content, initial_response.content)
+        self.assertEqual(populated_response["Cache-Control"], initial_response["Cache-Control"])
+        self.assertIsNone(connection.connection)
+        self.assertEqual(len(before), len(after))
+        select_counts = []
+        for queries in (before, after):
+            statements = [query["sql"].strip().upper() for query in queries]
+            select_counts.append(sum(statement.startswith("SELECT") for statement in statements))
+            for statement in statements:
+                self.assertTrue(
+                    statement.startswith("SELECT")
+                    or statement in {"BEGIN", "COMMIT", "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"},
+                    "A selected fragment issued an unexpected non-read statement.",
+                )
+        self.assertGreater(select_counts[0], 0)
+        self.assertEqual(select_counts[0], select_counts[1])
+        self.assertLessEqual(select_counts[1], 12)
+        print(
+            f"Selected fragment with 100 unrelated populated matches: {len(after)} queries, "
+            f"{select_counts[1]} SELECTs, {len(populated_response.content)} bytes; "
+            "query count and payload unchanged. This is not a capacity benchmark."
+        )
 
     @override_settings(MATCH_VIEWER_ENABLED=True, MATCH_VIEWER_MYSQL_VERIFIED=True)
     def test_revocation_and_chart_privacy_are_rechecked_on_render(self):

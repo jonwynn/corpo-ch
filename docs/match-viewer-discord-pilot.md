@@ -86,4 +86,14 @@ Each command and component checks the expected application/server/channel, exact
 
 The ordinary web runtime remains unchanged. Discord message IDs stay in memory; no channel/message destination, active tournament, administrator privilege or export destination is added to the sample. The client deliberately bypasses the normal bot startup and its queues. Passing this checkpoint qualifies the reused referee callbacks through this limited gateway session; it does not qualify full bot startup/restoration, arbitrary tournament setup, screenshots, multi-user staff operation or export retries.
 
-Record actual command availability, private-response behavior, pick/result/undo updates and clean Ctrl+C shutdown after the manual test. Gateway acceptance and live interaction behavior remain unverified until that test is completed.
+### Verified local checkpoint
+
+On 2026-09-28, manual testing in the actual DEV channel confirmed that the pilot works, including reaching the win target, finalizing the result, and reopening/undoing the completed match. The current desktop appearance was accepted separately. These results cover the single-owner synthetic sample; they do not approve production deployment.
+
+The remaining manual checks are:
+
+- Confirm private-response visibility and clean Ctrl+C shutdown/restart explicitly.
+- Review narrow layouts, 200% zoom and operating-system high contrast.
+- Before expanding the pilot, verify the intended deployment's access rules, connection settings and viewer load.
+
+Screenshot processing, Sheets exports and ordinary bot startup remain separate integration work. They are not required to display recorded picks and winners in this local viewer.
