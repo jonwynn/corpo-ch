@@ -1,0 +1,73 @@
+<section id="match-viewer-state" class="mv-state" data-match-id="{{ viewer.match_id|default:'' }}" data-contract-version="{{ viewer.contract_version|default:'1.0.0' }}" data-digest="{{ viewer.digest|default:'' }}" data-state="{{ viewer.state|default:'unselected' }}" data-polling-enabled="{% if state_url %}true{% else %}false{% endif %}"{% if state_url %} data-state-url="{{ state_url }}"{% endif %}>
+    {% if not viewer %}
+    <div class="mv-empty-state">
+        {% if loading %}<h2>Loading match</h2><p>Waiting for the recorded match state.</p>
+        {% else %}<h2>Select a match</h2><p>Choose a match to view its recorded progress.</p>{% endif %}
+    </div>
+    {% elif viewer.access != "allowed" %}
+    <div class="mv-empty-state">
+        {% if viewer.state == "authentication_required" %}<h2>Sign in to view this match</h2><p>A tournament staff account is required.</p>
+        {% else %}<h2>Match unavailable</h2><p>Your account does not have access to this match.</p>{% endif %}
+    </div>
+    {% else %}
+        {% if viewer.state == "needs_review" %}
+        <aside class="mv-notice" role="status"><strong>Recorded match needs review</strong><p>Some information is incomplete or inconsistent. Known results remain visible below.</p></aside>
+        {% elif viewer.state == "setup_changed" %}
+        <aside class="mv-notice" role="status"><strong>Match setup changed</strong><p>Refresh the player assignments before continuing.</p></aside>
+        {% elif viewer.state == "setup_incomplete" %}
+        <aside class="mv-notice" role="status"><strong>Waiting for player setup</strong><p>Two valid player assignments are needed to display the score.</p></aside>
+        {% elif viewer.state == "unsupported_rules" %}
+        <aside class="mv-notice" role="status"><strong>Match rules unavailable</strong><p>The win target cannot be confirmed for this configuration.</p></aside>
+        {% endif %}
+
+        <div class="mv-scoreboard">
+            <div class="mv-players">
+                {% for player in viewer.players %}
+                    {% include "match_viewer/player.html" with player=player %}
+                {% empty %}
+                    <section class="mv-player mv-player-p1"><h2>Player not assigned</h2><span class="mv-seed">P1</span></section>
+                    <section class="mv-player mv-player-p2"><h2>Player not assigned</h2><span class="mv-seed">P2</span></section>
+                {% endfor %}
+            </div>
+            <div class="mv-score" role="group" aria-label="Recorded match score">
+                <div class="mv-score-player mv-score-p1"><span class="mv-slot-label">P1</span><span class="mv-points" data-score-slot="p1">{% if viewer.wins != None %}{{ viewer.wins.0 }}{% else %}—{% endif %}</span></div>
+                <span class="mv-score-divider" aria-hidden="true">:</span>
+                <div class="mv-score-player mv-score-p2"><span class="mv-slot-label">P2</span><span class="mv-points" data-score-slot="p2">{% if viewer.wins != None %}{{ viewer.wins.1 }}{% else %}—{% endif %}</span></div>
+            </div>
+            {% if viewer.wins == None %}<p class="mv-score-unavailable">Score unavailable</p>{% endif %}
+            <div class="mv-target">
+                {% if viewer.target != None %}<strong class="mv-target-badge">First to {{ viewer.target }}</strong>
+                {% else %}<strong class="mv-target-badge">Target unavailable</strong>{% endif %}
+                <p class="mv-remaining">
+                    {% if viewer.state == "complete" %}
+                        {% for player in viewer.players %}{% if player.slot == viewer.status.winner_slot %}{{ player.name }} wins the match{% endif %}{% endfor %}
+                    {% elif viewer.state == "awaiting_finalization" %}Target reached · awaiting finalization
+                    {% elif viewer.remaining != None %}
+                        {% if viewer.remaining.0 == viewer.remaining.1 %}Each player needs {{ viewer.remaining.0 }} more win{{ viewer.remaining.0|pluralize }}
+                        {% else %}P1 needs {{ viewer.remaining.0 }} · P2 needs {{ viewer.remaining.1 }} more win{{ viewer.remaining.1|pluralize }}{% endif %}
+                    {% else %}Remaining wins unavailable{% endif %}
+                </p>
+            </div>
+        </div>
+
+        {% include "match_viewer/current.html" with current=viewer.current_selection %}
+
+        <section class="mv-history" aria-labelledby="match-viewer-rounds-title">
+            <h2 id="match-viewer-rounds-title">Round winners</h2>
+            <ol class="mv-round-tiles">
+                {% for round in viewer.rounds %}
+                <li class="mv-round-tile{% if round.winner_slot %} mv-winner-{{ round.winner_slot }}{% endif %}" data-round-id="{{ round.round_id }}">
+                    <span class="mv-round-number">R{{ round.number|default_if_none:"?" }}</span>
+                    {% if round.winner_slot %}
+                        <span>{{ round.winner_slot|upper }}</span>
+                        <strong>{% for player in viewer.players %}{% if player.slot == round.winner_slot %}{{ player.name }}{% endif %}{% endfor %}</strong>
+                    {% elif round.state == "awaiting_selection" %}<strong>Awaiting selection</strong>
+                    {% elif round.state == "needs_review" or round.state == "chart_unavailable" %}<strong>Needs review</strong>
+                    {% else %}<strong>Pending</strong>{% endif %}
+                </li>
+                {% empty %}<li class="mv-history-empty">No rounds recorded</li>{% endfor %}
+            </ol>
+        </section>
+        {% include "match_viewer/details.html" %}
+    {% endif %}
+</section>

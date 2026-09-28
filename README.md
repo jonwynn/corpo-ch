@@ -7,13 +7,16 @@ Clone Hero Tournament organizer and tools.
 
 Development version: **1.7.0-beta.1**, unreleased.
 
-This fork is preparing a read-only live match viewer for tournament staff on the existing website. The current milestone provides the data contract, independent fixtures, isolated CORP Cup rule calculations and a presentation builder. The viewer page and production integration are not implemented yet.
+This fork adds a read-only live match viewer for tournament staff on the existing website. It shows recorded bans/saves, chart picks, round winners and match progress in the approved navy, blue and coral layout. Large player names, stable player colors and a dynamic win target keep the main display compact.
 
 - [Viewer contract and rule decisions](docs/match-viewer-contract.md)
-- [Foundation tests and validation limits](docs/match-viewer-development.md)
+- [Local preview, tests and validation limits](docs/match-viewer-development.md)
+- [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
 - [Changelog](CHANGELOG.md)
 
-The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. CORP Cup uses opening-only bans, higher-seed first pick and subsequent loser picks. The historical migration dependency is restored and fresh database tests pass; see the development notes for validation limits.
+The explicit CORP Cup profile uses four opening ban/save actions, higher-seed first pick and subsequent loser picks. The website and bot share validated recorded state; continuous in-song statistics have no verified data source. Native browser refresh retains the last valid result during temporary failures and rechecks staff access on every request.
+
+The implementation has isolated tests and a local fixture preview. It is **not deployed**. Viewer, polling and MySQL verification switches default off. Real MySQL concurrency, live OAuth/Discord/provider checks and final human visual acceptance remain rollout gates. Existing overlay and non-CORP rule paths remain available.
 
 ## Links
 

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Corpo Match Viewer{% if viewer.context.tournament %} · {{ viewer.context.tournament }}{% endif %}{% endblock %}
+{% block style %}<link rel="stylesheet" href="{% static 'corpoch/match_viewer.css' %}">{% endblock %}
+{% block body %}class="match-viewer-page" data-theme="{{ selected_theme|default:'dark' }}"{% endblock %}
+
+{% block content %}
+<main class="mv-shell">
+    <div class="mv-toolbar">
+        <a class="mv-back-link" href="/home">Corpo CH</a>
+        <label class="mv-theme-label" for="match-viewer-theme">Appearance
+            <select id="match-viewer-theme" name="theme" data-theme-control>
+                <option value="dark"{% if selected_theme == "dark" or not selected_theme %} selected{% endif %}>Dark</option>
+                <option value="light"{% if selected_theme == "light" %} selected{% endif %}>Light</option>
+                <option value="system"{% if selected_theme == "system" %} selected{% endif %}>System</option>
+            </select>
+        </label>
+    </div>
+    {% if preview_mode %}
+    <aside class="mv-preview" aria-label="Fixture preview">
+        <p>Illustrative match preview · live updates off</p>
+        {% if fixture_choices %}
+        <nav class="mv-fixture-links" aria-label="Example match states">
+            {% for choice in fixture_choices %}
+            <a href="{{ choice.url }}"{% if choice.selected %} aria-current="page"{% endif %}>{{ choice.label }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+    </aside>
+    {% endif %}
+    <article class="mv-viewer" aria-labelledby="match-viewer-title">
+        <header class="mv-header">
+            <h1 id="match-viewer-title">Corpo Match Viewer</h1>
+            <span class="mv-audience">Staff viewer</span>
+        </header>
+        {% include "match_viewer/state.html" %}
+    </article>
+    <div class="mv-connection" id="match-viewer-connection">
+        {% if preview_mode %}Example data{% elif connection_label %}{{ connection_label }}{% else %}Recorded match state{% endif %}
+    </div>
+    <div class="mv-sr-only" id="match-viewer-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="mv-refresh-controls">
+        <button type="button" id="match-viewer-retry" hidden>Retry now</button>
+        <a href="" id="match-viewer-reload" hidden>Reload player assignments</a>
+        {% if not preview_mode %}<a href="{% url 'match_viewer_index' %}">Choose another match</a>{% endif %}
+    </div>
+    {{ viewer.assignment|json_script:"match-viewer-assignment" }}
+    <noscript><p class="mv-connection">JavaScript is off. Reload this page to update the recorded results.</p></noscript>
+</main>
+{% endblock %}
+
+{% block js %}<script src="{% static 'corpoch/match_viewer.js' %}" defer></script>{% endblock %}
+
+{% block footer %}
+<footer class="mv-footer">Created by <a href="https://www.twitch.tv/jonw_CH">@jonw_CH on Twitch</a>. Built on Corpo CH.</footer>
+{% endblock %}

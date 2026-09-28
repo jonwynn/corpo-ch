@@ -1,0 +1,26 @@
+<section class="mv-player mv-player-{{ player.slot }}" aria-labelledby="match-viewer-name-{{ player.slot }}" data-player-slot="{{ player.slot }}">
+    <div class="mv-player-identity">
+        {% if player.overline %}<p class="mv-overline">{{ player.overline }}</p>{% endif %}
+        <h2 id="match-viewer-name-{{ player.slot }}">{{ player.name }}</h2>
+        <span class="mv-seed">{{ player.slot|upper }} · Seed {{ player.seed|default_if_none:"unavailable" }}</span>
+    </div>
+    <div class="mv-player-activity">
+        {% if viewer.panel_mode == "latest_picks" %}
+            <h3>Latest pick</h3>
+            {% if player.latest_pick %}<p class="mv-pick-title">{{ player.latest_pick.chart.label }}</p><p class="mv-pick-round">Round {{ player.latest_pick.number|default_if_none:"unavailable" }}</p>
+            {% else %}<p class="mv-pick-title">No pick recorded</p>{% endif %}
+        {% elif viewer.panel_mode == "recorded_actions" %}
+            <h3>Recorded bans and saves</h3>
+            <ul class="mv-action-list">
+                {% for action in player.recorded_actions %}<li><span class="mv-action-kind">{% if action.saved %}Saved{% else %}Ban{% endif %}</span> {{ action.chart.label }}</li>
+                {% empty %}<li class="mv-no-action">No actions recorded</li>{% endfor %}
+            </ul>
+        {% else %}
+            <h3>Initial bans and saves</h3>
+            <ul class="mv-action-list">
+                {% for action in player.opening_actions %}<li><span class="mv-action-kind">{% if action.saved %}Saved{% else %}Ban{% endif %}</span> {{ action.chart.label }}</li>
+                {% empty %}<li class="mv-no-action">No actions recorded</li>{% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+</section>

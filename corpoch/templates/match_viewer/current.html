@@ -1,0 +1,26 @@
+<section class="mv-current" aria-labelledby="match-viewer-current-title">
+    <div class="mv-current-meta">
+        <span>
+            {% if current %}Round {{ current.number|default_if_none:"unavailable" }}
+                {% if current.picker_slot %} · {{ current.picker_slot|upper }} picked
+                {% elif current.selection_kind == "referee" %} · Referee selection
+                {% elif current.selection_kind == "automatic" %} · Automatic selection
+                {% elif current.chart.visibility != "not_selected" %} · Picker unconfirmed{% endif %}
+            {% else %}Opening bans{% endif %}
+        </span>
+        <span>
+            {% if viewer.state == "complete" %}Match complete
+            {% elif viewer.state == "awaiting_finalization" %}Awaiting finalization
+            {% elif not current %}No chart selected
+            {% elif current.state == "result_recorded" %}Result recorded
+            {% elif current.state == "awaiting_selection" %}Awaiting chart selection
+            {% elif current.state == "needs_review" or current.state == "chart_unavailable" %}Needs review
+            {% else %}Awaiting recorded result{% endif %}
+        </span>
+    </div>
+    <h2 id="match-viewer-current-title">
+        {% if not current %}Waiting for the first song selection
+        {% elif current.chart.visibility == "not_selected" %}Waiting for {% if current.number == 1 %}the first{% else %}the next{% endif %} song selection
+        {% else %}{{ current.chart.label }}{% endif %}
+    </h2>
+</section>

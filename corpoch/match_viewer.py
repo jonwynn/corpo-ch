@@ -409,6 +409,7 @@ def resolve_presentation_state(slots, target, history, status, issues):
         "selected_chart_missing", "final_winner_mismatch", "lifecycle_inconsistent",
         "score_exceeds_target", "tiebreaker_provenance_inconsistent", "picker_unavailable", "tied_seeds",
         "noncontiguous_round_numbers", "nonfinal_pending_round", "round_after_decisive_result",
+        "corp_history_invalid",
     }
     if slots is None:
         state = (
@@ -491,6 +492,8 @@ def build_match_presentation(source, pins=None):
         }
 
     issues = []
+    if source.get("history_valid") is False:
+        add_issue(issues, "corp_history_invalid")
     players = build_player_slots(source, pins, issues)
     slots = [player["player_id"] for player in players] if players else None
     slot_lookup = {player_id: f"p{index + 1}" for index, player_id in enumerate(slots or [])}
@@ -551,6 +554,12 @@ def build_match_presentation(source, pins=None):
     )
     state = resolve_presentation_state(slots, target, history, status, issues)
     presented_players = build_presented_players(players, wins, remaining, latest_picks)
+    presented_round_lookup = {record["round_id"]: record for record in presented_rounds}
+    for player in presented_players:
+        player_actions = [record for record in presented_actions if record["player_slot"] == player["slot"]]
+        player["opening_actions"] = [record for record in player_actions if record["action_phase"] == "opening"]
+        player["recorded_actions"] = [record for record in player_actions if record["action_phase"] != "tiebreaker"]
+        player["latest_pick"] = presented_round_lookup.get(player["latest_pick_round_id"])
     context = source.get("context") if isinstance(source.get("context"), dict) else {}
     presentation = {
         "contract_version": "1.0.0",
@@ -558,6 +567,7 @@ def build_match_presentation(source, pins=None):
         "access": "allowed", "state": state, "panel_mode": panel_mode,
         "slots": slots, "wins": wins, "target": target, "remaining": remaining,
         "current_round": history[-1]["round_id"] if history else None,
+        "current_selection": presented_rounds[-1] if presented_rounds else None,
         "round_history": history, "opening_action_ids": opening_ids,
         "effective_ban_chart_ids": effective_ids, "latest_picks": latest_picks,
         "quality": issues, "hidden_chart_count": len(hidden_charts),

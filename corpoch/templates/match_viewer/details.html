@@ -1,0 +1,70 @@
+<details id="match-viewer-details" class="mv-details" data-preserve-open{% if details_open %} open{% endif %}>
+    <summary id="match-viewer-details-summary">Match details</summary>
+    <div class="mv-details-content">
+        <section aria-labelledby="match-viewer-context-title">
+            <h3 id="match-viewer-context-title">Match information</h3>
+            <dl class="mv-info-list">
+                {% if viewer.context.tournament %}<div><dt>Tournament</dt><dd>{{ viewer.context.tournament }}</dd></div>{% endif %}
+                {% if viewer.context.bracket %}<div><dt>Bracket</dt><dd>{{ viewer.context.bracket }}</dd></div>{% endif %}
+                {% if viewer.context.group %}<div><dt>Group</dt><dd>{{ viewer.context.group }}</dd></div>{% endif %}
+                <div><dt>Format</dt><dd>{% if viewer.rules.supported %}Best of {{ viewer.rules.num_rounds }} · First to {{ viewer.target }}{% else %}Rules unavailable{% endif %}</dd></div>
+                <div><dt>Opening action quota</dt><dd>{% if viewer.rules.num_bans %}{{ viewer.rules.num_bans }} per player{% else %}Unavailable{% endif %}</dd></div>
+                <div><dt>Finalization</dt><dd>{% if viewer.status.result_finalized %}Recorded as finalized{% else %}Not finalized{% endif %}</dd></div>
+                <div><dt>Evidence collection</dt><dd>{% if viewer.status.evidence_finished %}Recorded as finished{% else %}Not recorded as finished{% endif %}</dd></div>
+                <div><dt>Export</dt><dd>{% if viewer.status.export_recorded %}Recorded as exported{% else %}Export not recorded{% endif %}</dd></div>
+            </dl>
+            <p class="mv-detail-note">Evidence and export flags do not change the match score. An export flag does not confirm later corrections reached the results sheet.</p>
+        </section>
+        {% if viewer.quality %}
+        <section class="mv-data-notes" aria-labelledby="match-viewer-notes-title">
+            <h3 id="match-viewer-notes-title">Recorded information</h3>
+            <ul>
+                {% if "titles_withheld" in viewer.quality %}<li>Unrevealed chart titles are withheld.</li>{% endif %}
+                {% if "action_phase_unknown" in viewer.quality %}<li>Some ban or save records do not identify whether they occurred at the opening or tiebreaker.</li>{% endif %}
+                {% if "selection_kind_unknown" in viewer.quality or "picker_unavailable" in viewer.quality %}<li>Some selections do not have a confirmed chooser. They are not shown as a player's latest pick.</li>{% endif %}
+                {% if "action_owner_unavailable" in viewer.quality %}<li>Some actions have no available player assignment; they remain in the action history.</li>{% endif %}
+                {% if "selected_chart_missing" in viewer.quality %}<li>A selected chart is no longer available. Recorded winners remain separate from chart availability.</li>{% endif %}
+                {% if "corp_history_invalid" in viewer.quality %}<li>The recorded actions or rounds do not match the configured CORP Cup rules. Known results remain visible for staff review.</li>{% endif %}
+                {% if "metadata_unverified" in viewer.quality %}<li>Some screenshot metadata is unverified or unusable.</li>{% endif %}
+                {% if viewer.state == "needs_review" %}<li>A referee should check the recorded players, round order, results and finalization.</li>{% endif %}
+                {% if viewer.state == "setup_changed" or viewer.state == "setup_incomplete" %}<li>The player assignments must be confirmed before a reliable score can be displayed.</li>{% endif %}
+                {% if viewer.state == "unsupported_rules" %}<li>The win target is withheld until this rule configuration is supported.</li>{% endif %}
+            </ul>
+        </section>
+        {% endif %}
+        <section aria-labelledby="match-viewer-actions-title">
+            <h3 id="match-viewer-actions-title">Ban and save history</h3>
+            <p class="mv-detail-note">A save removes that chart from the effective bans. Played charts may no longer be eligible. Only surviving action records are shown below.</p>
+            <ol class="mv-detail-rows">
+                {% for action in viewer.actions %}
+                <li data-action-id="{{ action.action_id }}">
+                    <span class="mv-detail-meta">{{ action.player_label }} · {% if action.action_phase == "opening" %}Opening{% elif action.action_phase == "tiebreaker" %}Tiebreaker{% else %}Phase unknown{% endif %}</span>
+                    <span><strong>{% if action.saved %}Saved{% else %}Banned{% endif %}</strong> {{ action.chart.label }}</span>
+                </li>
+                {% empty %}<li>No actions recorded</li>{% endfor %}
+            </ol>
+        </section>
+        <section aria-labelledby="match-viewer-history-title">
+            <h3 id="match-viewer-history-title">Round history</h3>
+            <ol class="mv-detail-rows">
+                {% for round in viewer.rounds %}
+                <li data-detail-round-id="{{ round.round_id }}">
+                    <span class="mv-detail-meta">Round {{ round.number|default_if_none:"unavailable" }} · {% if round.picker_slot %}{{ round.picker_slot|upper }} picked{% elif round.selection_kind == "automatic" %}Automatic selection{% elif round.selection_kind == "referee" %}Referee selection{% elif round.chart.visibility == "not_selected" %}Awaiting selection{% else %}Picker unconfirmed{% endif %}</span>
+                    <strong>{{ round.chart.label }}</strong>
+                    <span>{% if round.winner_slot %}Winner: {{ round.winner_slot|upper }} · {% for player in viewer.players %}{% if player.slot == round.winner_slot %}{{ player.name }}{% endif %}{% endfor %}
+                    {% elif round.state == "awaiting_selection" %}No result expected yet{% elif round.state == "needs_review" or round.state == "chart_unavailable" %}Record needs review{% else %}Awaiting recorded result{% endif %}</span>
+                </li>
+                {% empty %}<li>No rounds recorded</li>{% endfor %}
+            </ol>
+        </section>
+        <section aria-labelledby="match-viewer-evidence-title">
+            <h3 id="match-viewer-evidence-title">Screenshot evidence</h3>
+            <p class="mv-detail-note">Availability only. A reference or metadata entry does not verify the file, player or result.</p>
+            <ul class="mv-detail-rows">
+                {% for evidence in viewer.evidence %}
+                <li><span>{% for round in viewer.rounds %}{% if round.round_id == evidence.round_id %}Round {{ round.number|default_if_none:"unavailable" }}{% endif %}{% endfor %}</span><span>{% if evidence.file_reference_recorded %}File reference recorded{% else %}No file reference recorded{% endif %} · {% if evidence.metadata_present %}Metadata present, unverified{% else %}No metadata recorded{% endif %}</span></li>
+                {% empty %}<li>No round evidence recorded</li>{% endfor %}
+            </ul>
+        </section>
+    </div>
+</details>

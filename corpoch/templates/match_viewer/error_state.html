@@ -1,0 +1,3 @@
+<section id="match-viewer-state" class="mv-state" data-state="unavailable" data-http-status="{{ error_status }}">
+    <div class="mv-empty-state" role="status"><h2>{% if error_status == 401 %}Sign in required{% else %}Match unavailable{% endif %}</h2><p>{{ error_message }}</p></div>
+</section>

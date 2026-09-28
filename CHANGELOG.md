@@ -15,6 +15,11 @@
 - Atomic CORP action writers for assignment, opening bans/saves, selection, results, finalization and undo. Revision checks reject stale or duplicate bot/admin actions.
 - Scoped evidence/export publication that rechecks delayed results and updates only intended fields. Screenshot decoding, file storage and external publishing stay outside match locks.
 - Isolated migration, rule, bot/admin seam and publication regression tests, including stale callbacks and corrections.
+- The approved navy, blue and coral viewer with large full player names, stable slots, opening bans/saves, latest picks, centered score, dynamic targets, round history and expandable details.
+- A staff-only match selector, selected-match page and GET fragment, with fresh account/role checks, private cache headers, bounded reads and selected-bracket chart redaction. Rollout, polling and MySQL verification switches default off.
+- Native browser refresh with one request at a time, cancellation, pinned identity checks, stale/retry handling, preserved details and access-loss clearing. Existing overlay refresh is unchanged.
+- Dark, light and system appearance choices, saved theme selection, narrow layouts and forced-color styles.
+- A loopback fixture preview with simulated updates/failures, read-side regression tests, 12 refresh-controller tests and a staged rollout/rollback checklist.
 
 ### Changed
 
@@ -28,4 +33,6 @@
 
 ### Delivery status
 
-This backend milestone implements the CORP profile, migration and coordinated match writes. Isolated SQLite tests exercise migration and model behavior; bot/admin seams use controlled fixtures. Viewer layout, routes and refresh follow as a separate milestone under this unreleased version. Real MySQL concurrency, OAuth/Discord/provider execution, old encrypted-data conversion and deployment remain unverified. No deployment has been performed.
+The backend and viewer milestones are implemented but unreleased. The combined guarded application suite passes 171 tests using the real SQLite migration chain through `0030`; the foundation suite passes 44 executed tests with 9 explicit skips, and 12 Node controller tests pass. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, saved appearance and a narrow viewport.
+
+Real MySQL concurrency, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

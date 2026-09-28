@@ -1,3 +1,6 @@
-"""Empty test-only routes until the fixture layout stage."""
+"""Isolated viewer routes without the legacy admin or service imports."""
 
-urlpatterns = []
+from django.urls import include, path
+
+
+urlpatterns = [path("match-viewer/", include("corpoch.match_viewer_urls"))]

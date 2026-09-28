@@ -7,6 +7,7 @@ from corpoch import views
 from corpoch.api import urls as apiurls
 
 urlpatterns = [
+    path('match-viewer/', include('corpoch.match_viewer_urls')),
     path('admin/', admin.site.urls),
     path('', views.null),
     path('auth',views.auth),

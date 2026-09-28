@@ -21,6 +21,12 @@ AUTH_URL_DISCORD = os.getenv("AUTH_URL_DISCORD")
 #LOGIN_URL = [ 'views:auth' ]
 
 DEBUG = os.getenv("DEBUG", False)
+
+# Each rollout gate requires an explicit opt-in.
+MATCH_VIEWER_ENABLED = os.getenv("MATCH_VIEWER_ENABLED", "false") == "true"
+MATCH_VIEWER_POLLING_ENABLED = os.getenv("MATCH_VIEWER_POLLING_ENABLED", "false") == "true"
+MATCH_VIEWER_MYSQL_VERIFIED = os.getenv("MATCH_VIEWER_MYSQL_VERIFIED", "false") == "true"
+
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 

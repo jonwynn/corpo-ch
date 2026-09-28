@@ -1,0 +1,4 @@
+{% extends "match_viewer/page.html" %}
+{% block content %}
+<main class="mv-shell"><article class="mv-viewer"><header class="mv-header"><h1>Corpo Match Viewer</h1></header>{% include "match_viewer/error_state.html" %}</article><p>{% if error_status == 401 %}<a href="/auth">Sign in to Corpo CH</a>{% else %}<a href="/home">Return to Corpo CH</a>{% endif %}</p></main>
+{% endblock %}

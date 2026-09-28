@@ -2,9 +2,9 @@
 
 Application development version: **1.7.0-beta.1**, unreleased. Internal fixture and presentation contract: **1.0.0**. These version numbers serve different purposes.
 
-The first release adds one read-only match viewer to the existing website for tournament staff. It uses Django templates and HTMX refreshes, with the approved navy, blue and coral layout. It shows recorded match progress. Continuous gameplay scores, note hits, combo and accuracy have no verified data source and are outside this release.
+The first release adds one read-only match viewer to the existing website for tournament staff. It uses Django templates and native fetch refreshes, with the approved navy, blue and coral layout. It shows recorded match progress. Continuous gameplay scores, note hits, combo and accuracy have no verified data source and are outside this release.
 
-This foundation defines expected behavior, isolated rule calculations and a pure presentation builder. It does not add production routes, migrations or match-rule changes. CORP Cup match flow is confirmed below; deployment configuration and writer integration remain unverified. The historical migration dependency is restored and the isolated fresh-database gate passes; see the [development notes](match-viewer-development.md).
+Stages 1–5 are implemented: contract/fixtures, CORP Cup rules and writers, the approved layout, scoped staff reads and refresh handling. Stage 6 isolated checks and focused browser checks pass. Human visual acceptance, real MySQL consistency, OAuth/Discord/provider integration and deployment remain gates. The feature is disabled by default; see the [development notes](match-viewer-development.md) and [rollout checklist](match-viewer-rollout.md).
 
 ## CORP Cup rules
 
@@ -24,7 +24,7 @@ There are four opening actions, in this order:
 
 Deferral is prohibited. A save targets the opponent's immediately preceding ban. A saved song cannot be banned again, and a player cannot save their own ban. Each save cancels one effective ban while consuming an action, leaving **0, 2 or 4 effective bans** after all four actions. The target stays four or five regardless of the number of effective bans. Songs selected for additional opening bans must be distinct from all earlier banned or saved songs.
 
-The planned mapping is `num_players=2`, `num_bans=2`, `ban_ruleset="bansave"`, `pick_ruleset="loserpicks"`, `defer=False` and `num_rounds=7` or `9`. Here `total_bans=4` is the stored opening-action quota, not four guaranteed excluded songs. A proposed `tb_ruleset="corp_cup"` will distinguish this profile from existing `bansave` tiebreakers, which expect a later ban. The new token is not registered or applied to a database yet. Preserve other tournaments' behavior. Validate the available setlist and seed configuration before enabling this profile; disabled boss charts or inverted seeds must not silently change the written rules.
+The implemented mapping is `num_players=2`, `num_bans=2`, `ban_ruleset="bansave"`, `pick_ruleset="loserpicks"`, `defer=False` and `num_rounds=7` or `9`. Here `total_bans=4` is the stored opening-action quota, not four guaranteed excluded songs. The additive `tb_ruleset="corp_cup"` distinguishes this profile from existing `bansave` tiebreakers, which expect a later ban. Migration `0030` registers the choice without converting existing brackets. Validate the available setlist and seed configuration before selecting it; disabled boss charts, separate reserved tiebreaker charts, BYOS or inverted seeds are unsupported.
 
 **Bans occur only at the start of the match.** This rule clarification supersedes the extra bans in the earlier two-ban and zero-ban tiebreaker instructions. There is no tiebreaker ban action in this profile.
 
@@ -42,11 +42,11 @@ The higher-seeded player selects the first song. After each recorded song result
 
 The general rules require CH `v1.0.0.4080-final` and in-game result screenshots, and leave sportsmanship, restarts and rulings with referees. They do not add continuous telemetry or justify new enforcement controls in the viewer. Screenshot presence alone still cannot certify compliance.
 
-[`tests/fixtures/corp_cup_rules.json`](../tests/fixtures/corp_cup_rules.json) records confirmed rule examples separately from the generic visual fixtures. [`match_rules.py`](../corpoch/match_rules.py) validates these rules without database access. Callers must validate stored opening actions before using the count-based `opening_actor` helper. Production profile approval still requires migration, writer and integration tests.
+[`tests/fixtures/corp_cup_rules.json`](../tests/fixtures/corp_cup_rules.json) records confirmed rule examples separately from the generic visual fixtures. [`match_rules.py`](../corpoch/match_rules.py) validates these rules without database access. Readers and writers share `validate_corp_cup_history`; invalid historical choices/results produce a viewer review state. Callers must validate stored opening actions before using the count-based `opening_actor` helper. Deployment approval still requires the manual gates below.
 
-## Rule decisions before Stage 2
+## Supported rules and legacy decisions
 
-P1 and P2 below mean the validated, pinned display slots. Initial slots follow seed order, then `rev_seeds`; deferral never changes colors. Existing code is evidence of current behavior, not proof of intended tournament rules.
+P1 and P2 below mean the validated, pinned display slots. Initial slots follow seed order, then `rev_seeds`; deferral never changes colors. The table retains legacy behavior identified during the baseline audit. Only the confirmed CORP profile is enabled for trusted live targets; legacy inconsistencies remain separate work.
 
 | Situation | Existing behavior | Contract or required decision |
 |---|---|---|
@@ -61,7 +61,7 @@ P1 and P2 below mean the validated, pinned display slots. Initial slots follow s
 | `single` tiebreaker | Remaining-chart filtering selects tiebreaker charts; picker/undo behavior still depends on shared branches. | Confirm chart count, selection ownership and undo. A sole candidate does not prove an automatic selection occurred. |
 | `csc` tiebreaker | Round creation chooses a tiebreaker category from prior fret/strum counts, with no player picker. | Confirm the category rule, unique candidate requirement and undo before enabling. Label a verified generated choice Automatic selection. |
 | `refdecide` tiebreaker | Chooser is null; candidates are unplayed, non-banned charts. | Confirm referee selection and undo; never credit a player with the pick. |
-| `banpick` / `bansave` tiebreaker | Chooser branches depend on action/round counts and previous loser/current winner; ban-save can select the sole remaining chart. | CORP uses the previous loser for multiple choices and a neutral forced selection for one choice. Integrate through the proposed `corp_cup` mode; preserve existing modes. |
+| `banpick` / `bansave` tiebreaker | Chooser branches depend on action/round counts and previous loser/current winner; ban-save can select the sole remaining chart. | CORP uses the previous loser for multiple choices and a neutral forced selection for one choice through `corp_cup`; existing modes remain separate. |
 | Tiebreaker pickability | `pickable_tb` includes a truthy string-index expression instead of the intended ruleset comparison. | Correct only with an approved truth table and regressions for the enabled profile. |
 
 Sources: [`BracketRules`](../corpoch/models/tournament.py), [`MatchAbstract.picking_player`, `add_round`, `setlist_remaining`](../corpoch/models/match.py), [rule labels](../corpoch/types.py), and [`DiscordMatchView`, `SongRoundSelect`, `PlayerRoundSelect`](../corpoch/dbot/view/reftool.py).
@@ -72,7 +72,7 @@ That six-action profile remains a generic design example, not the CORP Cup confi
 
 The mockup's P2-winning-R1/P2-picking-R2 sequence is also illustrative. Under CORP Cup loser picks, P1 must win R1 for P2 to pick R2. If P2 wins R1, P1 picks R2 again. Keep the layout and populate the score and picker from actual records; do not copy the mockup's example sequence into live rule behavior.
 
-## Authoritative records and planned metadata
+## Authoritative records and provenance
 
 | Displayed information | Existing source | Required handling |
 |---|---|---|
@@ -89,10 +89,12 @@ The mockup's P2-winning-R1/P2-picking-R2 sequence is also illustrative. Under CO
 
 Model sources: [match](../corpoch/models/match.py), [tournament](../corpoch/models/tournament.py), [charts](../corpoch/models/charts.py), [user](../corpoch/models/misc.py), [guild](../corpoch/dbot/models.py).
 
-Two **proposed**, additive fields belong only on the concrete official-match models:
+Migration [`0030_match_provenance_corp_cup.py`](../corpoch/migrations/0030_match_provenance_corp_cup.py) adds two provenance fields only to the concrete official-match models:
 
 - `MatchBan.action_phase`: `unknown`, `opening`, or `tiebreaker`.
 - `MatchRound.selection_kind`: `unknown`, `player`, `referee`, or `automatic`.
+
+It also adds `Match.action_revision` to invalidate delayed sporting actions after corrections. Tokens include the scoped match state; they do not grant staff access.
 
 Default existing, imported and unverified rows to `unknown`; do not infer a historical backfill from current rules or timestamps. Capture action phase and `saved` on insertion. Capture chart, logical chooser and selection kind in one validated write. A referee choosing on a player's behalf records that player as the logical chooser.
 
@@ -104,7 +106,7 @@ Intentional selection undo clears attribution. Chart deletion retains selection 
 
 Use the primary configured Clone Hero alias, otherwise the first configured alias. Missing or malformed aliases produce Name unavailable; a missing participant produces Player not assigned. Preserve the full name, including a bracketed prefix. `[LOS]` has no verified dedicated source or meaning, so the optional overline remains null. Never parse it into a team label automatically.
 
-**Score.** Valid assigned players with no recorded winners show `0:0`. Missing/duplicate participants, outsider winners or ambiguous round numbering require an explicit review/unavailable state, not a fabricated zero. Shared score interfaces must retain their signatures and valid results. The existing `get_score` branch that credits any non-P1 winner to P2 requires a focused correction and consumer regressions.
+**Score.** Valid assigned players with no recorded winners show `0:0`. Missing/duplicate participants, outsider winners or ambiguous round numbering require an explicit review/unavailable state, not a fabricated zero. Shared score interfaces retain their signatures and valid results; `get_score` now counts P2 only when the winner matches P2. CORP history violations are flagged independently, preserving unambiguous recorded points for review.
 
 Remaining wins are `max(target - recorded_wins, 0)`. Missing/unsupported rules produce Target unavailable and omit remaining-win arithmetic. A finalized match shows the final result instead of active need language. Screenshot metadata never overrides referee-recorded winners.
 
@@ -137,13 +139,13 @@ Match state, panel mode, evidence status and connection status are independent. 
 
 ## Presentation and access boundary
 
-The intended integration is an additive Django page plus GET-only fragment using one presentation builder. Proposed routes are `/match-viewer/`, `/match-viewer/<str:match_id>/` and `/match-viewer/<str:match_id>/state/`. They do not exist at this foundation checkpoint. Existing [live views](../corpoch/views.py), [routes](../corpoch/urls.py), bot behavior, API shapes and overlay remain compatible.
+The integration is an additive Django page plus GET-only fragment using one presentation builder. Routes are `/match-viewer/`, `/match-viewer/<str:match_id>/` and `/match-viewer/<str:match_id>/state/`. The index lists up to 25 authorized matches per page. Existing [live views](../corpoch/views.py) and the overlay keep their rendering path; the viewer does not consume or extend the public API contract.
 
 The internal presentation uses primitives, string IDs and explicit nulls/reasons:
 
 | Field group | Required contents |
 |---|---|
-| Envelope | `contract_version`, `match_id`, read time, equality digest; client-owned request ID and generation for acceptance checks. |
+| Envelope | `contract_version`, `match_id`, equality digest; client-owned request generation and last successful response time. |
 | Context/assignment | Safe tournament/bracket/group labels; validated slot pins and assignment identity. |
 | Players | Slot, seed/player IDs, display name, nullable overline, seed, recorded wins, remaining wins, latest verified pick. |
 | Rules | Best-of, target, player count, ban quota, rule identifiers and support status. Fixture support is not live-profile approval. |
@@ -151,7 +153,7 @@ The internal presentation uses primitives, string IDs and explicit nulls/reasons
 | Actions/details | Surviving opening/unknown/tiebreaker actions, saved labels, effective exclusions, rule summary, quality issues, evidence/export flags. |
 | Visibility | Per-context permitted information. Withheld chart titles and identifying metadata are absent, not hidden with CSS. |
 
-The browser formats approved values and connection age. It does not calculate official scores, targets, effective bans or sporting turns. Read time means snapshot time, not the time an action happened. The equality digest is not a revision sequence.
+The browser formats approved values and connection age. It does not calculate official scores, targets, effective bans or sporting turns. Freshness measures time since a validated response, not time since an action occurred. The equality digest is not a revision sequence.
 
 Every index, page and fragment read requires an authenticated **active** account, then superuser or stored admin/referee membership in the selected tournament's guild. Check active status before any superuser bypass because the existing [authentication backend](../corpoch/auth.py) can return inactive users. `is_staff`, an assigned referee, a match ID or public API access alone grants nothing. Recheck account and stored scope each time without polling Discord.
 
@@ -159,11 +161,11 @@ For the pilot, withhold unrevealed chart titles even from staff unless a separat
 
 Allowed details are match context, surviving actions/results, target/rules, data-quality notes, evidence availability and local export status. Exclude account IDs, mentions, alias lists, tokens, channel/message IDs, configuration/Sheets URLs, file paths, screenshot URLs and raw `steg`. Internal TournamentPlayer/GroupSeed IDs may identify slots; they are not Discord account IDs.
 
-The current API is not the viewer contract: `MatchSerializerLight` omits rounds and rules, and `MatchBanSerializer` omits `saved`. Before adding model fields, freeze `MatchRoundSerializer` to its existing explicit field list so `fields='__all__'` cannot expose provenance accidentally. See [serializers](../corpoch/api/serializers.py).
+The public API is not the viewer contract: `MatchSerializerLight` omits rounds and rules, and `MatchBanSerializer` omits `saved`. `MatchRoundSerializer` and `MatchSerializer` now use explicit existing field lists so new provenance/revision fields are not exposed accidentally. See [serializers](../corpoch/api/serializers.py).
 
 ## Refresh, consistency and failure handling
 
-Use one request at a time, scheduled after the previous response or timeout. Proposed defaults are two seconds for active matches, ten seconds for completed matches, an eight-second request timeout and retry waits of 2/4/8/10 seconds. Active data becomes stale after ten seconds without a validated success; completed data after twenty. Measure costs before rollout.
+Native fetch sends one request at a time, scheduled after the previous response or timeout. Defaults are two seconds for active matches, ten seconds for completed matches, an eight-second request timeout and retry waits of 2/4/8/10 seconds. Active data becomes stale after ten seconds without a validated success; completed data after twenty. This small controller replaces the planned HTMX mechanism only for the new viewer, to keep cancellation and pinned identity checks local without a CDN dependency. Measure costs before rollout.
 
 Validate match ID, contract version and client generation before installing a response. Reject login HTML, malformed data and superseded/other-match responses. Normal match navigation aborts old requests. Hidden tabs pause polling and refresh on return; age remains honest.
 
@@ -171,9 +173,9 @@ An unchanged digest updates freshness without replacing the DOM. Changed state r
 
 Timeout, 5xx and retryable failures preserve last-good content and its age. Failed first load shows Load failed / Retry, not `0:0`. Definitive deletion, session expiry or permission loss clears protected content and stops the relevant polling. Persistent contradictory records produce Needs review after bounded handling; they must not leave an apparently current, frozen score.
 
-The reader must materialize one selected-match snapshot, including account/scope, assignments, rules, actions, rounds, chart visibility and flags. Planned MySQL integration uses transaction-scoped repeatable read before the first query, with non-locking reads and connection cleanup. `atomic()` under read committed, repeated IDs and retry loops do not establish consistency. Prove concurrent interleavings on a disposable deployment-like database before polling.
+The reader materializes one selected-match snapshot, including account/scope, assignments, rules, actions, rounds, chart visibility and flags. MySQL uses transaction-scoped repeatable read before the first query, with non-locking reads and connection cleanup; nested or non-autocommit reads are rejected. The SQL protocol is tested with mocks, but actual MySQL interleavings remain unverified. `atomic()` under read committed, repeated IDs and retry loops do not establish consistency. Keep the MySQL verification gate off until disposable deployment-like tests pass.
 
-Writers must commit each supported transition atomically and reject stale/duplicate callbacks after reloading the match. Do not hold locks through Discord, file storage, screenshot decoding, Sheets or rendering. Delayed upload/review/export/admin paths publish only intended fields after revalidation. Existing save overrides discard save options, so caller-only `update_fields` changes are insufficient. Preserve tested full-save behavior while preventing stale full-object saves from restoring corrected results or provenance.
+Supported CORP writers commit each transition atomically and reject stale/duplicate callbacks after reloading the match. Locks exclude Discord, file storage, screenshot decoding, Sheets and rendering. Delayed upload/review/export/admin paths publish intended fields after revalidation. Relevant model save overrides now forward save options so scoped updates cannot restore stale sporting fields. Separate bracket/rules/chart/seed configuration changes are not all coordinated writers; freeze that configuration during active pilot matches.
 
 Viewer reads must never save models, decode files, invoke providers, send messages or enqueue tasks. Query cost must depend on the selected match, not unrelated match volume. Measure query count, duration, payload size and concurrency before selecting production limits.
 
@@ -181,7 +183,7 @@ Viewer reads must never save models, decode files, invoke providers, send messag
 
 [`tests/fixtures/match_viewer_cases.json`](../tests/fixtures/match_viewer_cases.json) holds hand-authored inputs and independent expected answers. The top-level fields are `contract_version`, `scope`, `defaults`, `cases` and `scenario_examples`.
 
-Each case contains `case_id`, `family_ids`, `description`, `source`, `request` and `expected`. Source includes rules, players, reversal, actions, rounds, lifecycle, visibility and access. Actions carry `action_id/num/player_id/chart_id/chart_title/saved/action_phase`; rounds carry `round_id/num/chart_id/chart_title/picked_id/selection_kind/winner_id/screenshot_present/metadata_kind`. The two provenance fields remain proposed production fields.
+Each case contains `case_id`, `family_ids`, `description`, `source`, `request` and `expected`. Source includes rules, players, reversal, actions, rounds, lifecycle, visibility and access. Actions carry `action_id/num/player_id/chart_id/chart_title/saved/action_phase`; rounds carry `round_id/num/chart_id/chart_title/picked_id/selection_kind/winner_id/screenshot_present/metadata_kind`. Production reads also supply context and a shared history-validation result. Setlist IDs and loser IDs used for validation remain internal.
 
 Expected answers cover slot identity, panel mode, state, score/target/remaining wins, current round, history, opening action IDs, effective bans, latest picks, quality and access. `wins: null` means unavailable; `wins: [0, 0]` means known zero. Scenario examples describe later transport/browser/concurrency checks; their presence does not mean those systems were tested.
 
@@ -222,10 +224,10 @@ Optional screenshot performance metrics need separate player/alias/context bindi
 
 Visual review compares each approved checkpoint against the reference at matching width, then checks narrow layouts and accessibility. Keep large names, seed badges, plain P1/P2 labels, two activity panels, centered score, dynamic target, current selection, round tiles and expandable details. Remove montage headings, example phase controls, `B · Center score`, `Example target` and the illustrative-preview footer. Preserve the unsplit-name fallback and do not add circle/square player markers.
 
-## Foundation completion and later gates
+## Implementation status and rollout gates
 
-The foundation checkpoint requires fixture/contract checks and proof that isolated execution rejects unexpected external access. No production service, credentials or database is needed. A fixture test is not a migration, MySQL consistency, OAuth, bot or browser test.
+Foundation, model, template and controller checks remain separate evidence. The local preview serves memory fixtures without production services, credentials or database access. A fixture test is not a MySQL consistency, OAuth, live Discord or browser acceptance test.
 
-The isolated fresh-database prerequisite for Stage 2 passes. The confirmed ban/save and match-tiebreaker examples already exercise pure calculations; they must also verify production writers. Subsequent stages must prove coordinated writer/reader behavior, additive migration compatibility, staff login/access, refresh/visual behavior and measured cost. Keep the old overlay available. Disable the new viewer before rolling back to writers that cannot maintain provenance; retain columns and mark affected metadata unknown or restrict resumption to newly created matches.
+The implementation includes the additive migration, CORP writers, staff reader, approved templates and native refresh controller. Isolated SQLite tests exercise migrations and model behavior, while controller tests cover transport state. Final review and manual visual, MySQL, OAuth, Discord, screenshot/export and cost gates remain before rollout. `MATCH_VIEWER_ENABLED`, `MATCH_VIEWER_POLLING_ENABLED` and `MATCH_VIEWER_MYSQL_VERIFIED` default off. Keep the old overlay available. Disable the viewer before rolling back writers; retain migration `0030` and its provenance instead of reversing it. Resume only with verified metadata or newly created matches.
 
 Stop for operator review on access leaks, incorrect identity/color mapping, false picker/ban claims, inconsistent scores, unresolved write races or excessive read cost. The viewer never repairs official results, resubmits exports or publishes screenshots automatically.

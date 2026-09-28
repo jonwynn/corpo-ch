@@ -1,0 +1,21 @@
+{% extends "match_viewer/page.html" %}
+{% block content %}
+<main class="mv-shell">
+    <p><a href="/home">Corpo CH</a></p>
+    <article class="mv-viewer">
+        <header class="mv-header"><h1>Select a match</h1><span class="mv-audience">Staff viewer</span></header>
+        <div class="mv-state">
+            <ul class="mv-detail-rows">
+                {% for match in matches %}
+                <li><a href="{% url 'match_viewer' match_id=match.match_id %}">{{ match.players_label }}</a><span class="mv-detail-meta">{{ match.tournament }} · {{ match.bracket }} · Group {{ match.group }} · {% if match.complete %}Finalized{% else %}Open{% endif %}</span></li>
+                {% empty %}<li>No matches are available for your tournament staff account.</li>{% endfor %}
+            </ul>
+            <nav class="mv-fixture-links" aria-label="Match list pages">
+                {% if previous_page %}<a href="?page={{ previous_page }}">Previous</a>{% endif %}
+                <span>Page {{ page }} of {{ pages }}</span>
+                {% if next_page %}<a href="?page={{ next_page }}">Next</a>{% endif %}
+            </nav>
+        </div>
+    </article>
+</main>
+{% endblock %}

@@ -45,6 +45,19 @@ class MatchPresentationTests(unittest.TestCase):
         build_match_presentation(case["source"], case["request"]["pins"])
         self.assertEqual(case, original)
 
+    def test_template_collections_reference_only_presented_records(self):
+        source = self.create_source("approved_second_pick")
+        result = build_match_presentation(source)
+        self.assertEqual(result["current_selection"], result["rounds"][-1])
+        self.assertEqual(result["players"][0]["latest_pick"], result["rounds"][0])
+        self.assertEqual(result["players"][1]["latest_pick"], result["rounds"][1])
+        self.assertEqual(len(result["players"][0]["opening_actions"]), 3)
+        self.assertTrue(all(item["player_slot"] == "p1" for item in result["players"][0]["recorded_actions"]))
+        source["bracket_revealed"] = False
+        hidden = build_match_presentation(source)
+        self.assertNotIn("Unwritten", json.dumps(hidden))
+        self.assertNotIn("unwritten", json.dumps(hidden))
+
     def test_account_and_private_source_data_never_reach_output(self):
         source = self.create_source()
         source["private_configuration"] = "DO_NOT_PUBLISH_CONFIGURATION"
