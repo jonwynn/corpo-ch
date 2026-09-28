@@ -1,18 +1,18 @@
 {
     "contract_version": "1.0.0",
-    "scope": "Hand-authored CORP Cup rule examples. Numeric targets, opening actions and opening-only bans are confirmed. Ordinary picker order, tiebreaker picker and tied-song-score resolution need confirmation. Integrity checks do not validate production sporting-rule behavior.",
+    "scope": "Hand-authored CORP Cup rule examples. Targets, opening-only ban/save actions and higher-seed-first then loser-picks order are confirmed. Tied song scores remain a referee decision under CSC rules. Integrity checks do not validate production sporting-rule behavior.",
     "confirmation": {
-        "status": "partially_confirmed",
+        "status": "match_flow_confirmed",
         "live_profile_approved": false,
         "implementation_verified": false,
-        "ordinary_first_picker": null,
-        "ordinary_later_picker": null,
+        "ordinary_first_picker": "higher_seed",
+        "ordinary_later_picker": "previous_song_loser",
         "tied_song_score_resolution": null,
         "csc_reference_is_existing_csc_tiebreaker_mode": false,
         "defer_allowed": false,
         "opening_saved_chart_reban_allowed": false,
         "tiebreaker_extra_ban_allowed": false,
-        "tiebreaker_picker": null,
+        "tiebreaker_picker": "previous_song_loser_when_multiple_eligible_charts",
         "save_own_ban_allowed": false
     },
     "profiles": [
@@ -24,7 +24,7 @@
             "num_rounds": 7,
             "target": 4,
             "opening_action_count": 4,
-            "proposed_model_mapping": {"num_bans": 2, "ban_ruleset": "bansave", "tb_ruleset": null, "pick_ruleset": null}
+            "proposed_model_mapping": {"num_bans": 2, "ban_ruleset": "bansave", "tb_ruleset": "corp_cup", "pick_ruleset": "loserpicks"}
         },
         {
             "profile_id": "playoffs",
@@ -34,7 +34,7 @@
             "num_rounds": 9,
             "target": 5,
             "opening_action_count": 4,
-            "proposed_model_mapping": {"num_bans": 2, "ban_ruleset": "bansave", "tb_ruleset": null, "pick_ruleset": null}
+            "proposed_model_mapping": {"num_bans": 2, "ban_ruleset": "bansave", "tb_ruleset": "corp_cup", "pick_ruleset": "loserpicks"}
         }
     ],
     "opening_sequences": [
@@ -115,7 +115,7 @@
             "expected": {
                 "score": [3, 3], "raw_remaining_chart_ids": ["a", "b", "k"], "raw_remaining_count": 3,
                 "unplayed_saved_chart_ids": ["a"],
-                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "ban_actor": null, "pick_actor": "higher_seed", "selection_kind": "player",
                 "eligible_pick_chart_ids": ["a", "b", "k"], "forced_chart_id": null
             }
         },
@@ -128,7 +128,7 @@
             "expected": {
                 "score": [4, 4], "raw_remaining_chart_ids": ["a", "b", "m"], "raw_remaining_count": 3,
                 "unplayed_saved_chart_ids": ["a"],
-                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "ban_actor": null, "pick_actor": "lower_seed", "selection_kind": "player",
                 "eligible_pick_chart_ids": ["a", "b", "m"], "forced_chart_id": null
             }
         },
@@ -141,7 +141,7 @@
             "expected": {
                 "score": [3, 3], "raw_remaining_chart_ids": ["a", "b", "c", "d", "k"], "raw_remaining_count": 5,
                 "unplayed_saved_chart_ids": ["a", "c"],
-                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "ban_actor": null, "pick_actor": "higher_seed", "selection_kind": "player",
                 "eligible_pick_chart_ids": ["b", "d", "k"], "forced_chart_id": null
             }
         },
@@ -154,7 +154,7 @@
             "expected": {
                 "score": [4, 4], "raw_remaining_chart_ids": ["a", "b", "c", "d", "m"], "raw_remaining_count": 5,
                 "unplayed_saved_chart_ids": ["a", "c"],
-                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "ban_actor": null, "pick_actor": "lower_seed", "selection_kind": "player",
                 "eligible_pick_chart_ids": ["b", "d", "m"], "forced_chart_id": null
             }
         },
@@ -167,7 +167,7 @@
             "expected": {
                 "score": [3, 3], "raw_remaining_chart_ids": ["b", "c", "d", "j", "k"], "raw_remaining_count": 5,
                 "unplayed_saved_chart_ids": ["c"],
-                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "ban_actor": null, "pick_actor": "higher_seed", "selection_kind": "player",
                 "eligible_pick_chart_ids": ["b", "c", "d", "j", "k"], "forced_chart_id": null
             }
         },
@@ -180,7 +180,7 @@
             "expected": {
                 "score": [3, 3], "raw_remaining_chart_ids": ["b", "d", "i", "j", "k"], "raw_remaining_count": 5,
                 "unplayed_saved_chart_ids": [],
-                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "ban_actor": null, "pick_actor": "lower_seed", "selection_kind": "player",
                 "eligible_pick_chart_ids": ["b", "d", "i", "j", "k"], "forced_chart_id": null
             }
         }

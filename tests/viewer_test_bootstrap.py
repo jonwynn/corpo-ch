@@ -15,16 +15,23 @@ class BlockedTestOperation(RuntimeError):
 
 
 class ViewerImportGuard(importlib.abc.MetaPathFinder):
-    """Keeps foundation tests independent of the application and native clients."""
+    """Blocks service clients and requires explicit opt-in for application models."""
 
-    def __init__(self):
+    def __init__(self, allow_models=False):
         self.blocked_modules = (
             "MySQLdb",
             "pymysql",
             "psycopg",
             "psycopg2",
-            "corpoch",
         )
+        if allow_models:
+            self.blocked_modules += (
+                "corpoch.providers",
+                "corpoch.tasks",
+                "corpoch.dbot.tasks",
+            )
+        else:
+            self.blocked_modules += ("corpoch",)
 
     def find_spec(self, fullname, path=None, target=None):
         """
@@ -45,10 +52,11 @@ class ViewerImportGuard(importlib.abc.MetaPathFinder):
 class ViewerTestEnvironment:
     """Owns temporary storage and guards for one fresh test process."""
 
-    def __init__(self, directory):
+    def __init__(self, directory, allow_models=False):
         self.directory = Path(directory).resolve()
         self.active = False
-        self.import_guard = ViewerImportGuard()
+        self.import_guard = ViewerImportGuard(allow_models=allow_models)
+        self.mode = "isolated-model" if allow_models else "isolated"
         self.environment_patch = None
         self.previous_bytecode_setting = sys.dont_write_bytecode
         self.settings_module = None
@@ -73,7 +81,7 @@ class ViewerTestEnvironment:
         }
         environment.update(
             {
-                "CORPO_VIEWER_TEST_MODE": "isolated",
+                "CORPO_VIEWER_TEST_MODE": self.mode,
                 "CORPO_VIEWER_TEST_DIRECTORY": str(self.directory),
                 "DJANGO_SETTINGS_MODULE": "tests.viewer_test_settings",
                 "PYTHON_DOTENV_DISABLED": "1",

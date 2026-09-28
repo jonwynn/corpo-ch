@@ -4,7 +4,7 @@ Application development version: **1.7.0-beta.1**, unreleased. Internal fixture 
 
 The first release adds one read-only match viewer to the existing website for tournament staff. It uses Django templates and HTMX refreshes, with the approved navy, blue and coral layout. It shows recorded match progress. Continuous gameplay scores, note hits, combo and accuracy have no verified data source and are outside this release.
 
-This foundation defines expected behavior and isolated test cases. It does not add production routes, migrations or match-rule changes. CORP Cup opening bans and match lengths are specified below. **Ordinary song-pick order and the direct tiebreaker chooser remain unresolved**, so the full production profile is not approved yet.
+This foundation defines expected behavior, isolated rule calculations and a pure presentation builder. It does not add production routes, migrations or match-rule changes. CORP Cup match flow is confirmed below; deployment configuration and writer integration remain unverified. Database work is paused at the historical migration dependency described in the [development notes](match-viewer-development.md).
 
 ## CORP Cup rules
 
@@ -24,7 +24,7 @@ There are four opening actions, in this order:
 
 Deferral is prohibited. A save targets the opponent's immediately preceding ban. A saved song cannot be banned again, and a player cannot save their own ban. Each save cancels one effective ban while consuming an action, leaving **0, 2 or 4 effective bans** after all four actions. The target stays four or five regardless of the number of effective bans. Songs selected for additional opening bans must be distinct from all earlier banned or saved songs.
 
-The planned mapping to existing fields is `num_players=2`, `num_bans=2`, `ban_ruleset="bansave"`, `defer=False` and `num_rounds=7` or `9`. Here `total_bans=4` is the stored opening-action quota, not four guaranteed excluded songs. The tiebreaker mapping remains unresolved: current `tb_ruleset="bansave"` expects a later ban for multiple candidates and cannot represent the opening-only rule unchanged. Do not silently apply new behavior to every existing ban-save tournament. This mapping has not been applied to a database or verified against a deployed tournament. Validate the full available setlist and seed configuration before treating a match as this profile; disabled boss charts or inverted seeds must not silently change the written rules.
+The planned mapping is `num_players=2`, `num_bans=2`, `ban_ruleset="bansave"`, `pick_ruleset="loserpicks"`, `defer=False` and `num_rounds=7` or `9`. Here `total_bans=4` is the stored opening-action quota, not four guaranteed excluded songs. A proposed `tb_ruleset="corp_cup"` will distinguish this profile from existing `bansave` tiebreakers, which expect a later ban. The new token is not registered or applied to a database yet. Preserve other tournaments' behavior. Validate the available setlist and seed configuration before enabling this profile; disabled boss charts or inverted seeds must not silently change the written rules.
 
 **Bans occur only at the start of the match.** This rule clarification supersedes the extra bans in the earlier two-ban and zero-ban tiebreaker instructions. There is no tiebreaker ban action in this profile.
 
@@ -33,16 +33,16 @@ At the final match tie, six group-stage songs or eight playoff songs have been p
 | Effective opening bans | Unplayed, non-banned songs | Next action |
 |---|---|---|
 | 4 | 1 | The sole remaining song is the tiebreaker; no player is credited with choosing it. |
-| 2 | 3 | Select the tiebreaker directly from eligible songs; chooser needs confirmation. No additional ban. |
-| 0 | 5 | Select the tiebreaker directly from eligible songs; chooser needs confirmation. No additional ban. |
+| 2 | 3 | The previous song's loser selects the tiebreaker from eligible songs. No additional ban. |
+| 0 | 5 | The previous song's loser selects the tiebreaker from eligible songs. No additional ban. |
 
 These counts include saved songs and are not dropdown-option counts. One saved, unplayed song can be selected. If both saved songs remain unplayed, neither can be selected as the tiebreaker. All additional bans are prohibited, so there is no saved-song ban-eligibility decision at this stage. Undo or corrected rounds require recomputing the eligible choices from surviving records.
 
-Normal first-pick and subsequent-pick order is not stated in the supplied rules. Keep those choices unresolved instead of selecting `loserpicks` or `alternate` from a default or the design fixtures. The reference to CSC ruling for tied scores does not specify an adjudication algorithm and must not select the existing category-based `tb_ruleset="csc"`. The read-only viewer waits for the referee-recorded winner; automated adjudication is outside scope.
+The higher-seeded player selects the first song. After each recorded song result, the loser selects the next song, including a tiebreaker with multiple eligible choices. Picking does not alternate automatically: a player who loses consecutive songs picks again. The reference to CSC ruling for tied scores does not specify an adjudication algorithm and must not select the existing category-based `tb_ruleset="csc"`. The viewer waits for the referee-recorded winner; automated adjudication is outside scope.
 
 The general rules require CH `v1.0.0.4080-final` and in-game result screenshots, and leave sportsmanship, restarts and rulings with referees. They do not add continuous telemetry or justify new enforcement controls in the viewer. Screenshot presence alone still cannot certify compliance.
 
-[`tests/fixtures/corp_cup_rules.json`](../tests/fixtures/corp_cup_rules.json) records confirmed rule examples separately from the generic visual fixtures. The full profile remains incomplete until ordinary picker order and the direct tiebreaker chooser are confirmed and implementation tests pass.
+[`tests/fixtures/corp_cup_rules.json`](../tests/fixtures/corp_cup_rules.json) records confirmed rule examples separately from the generic visual fixtures. [`match_rules.py`](../corpoch/match_rules.py) validates these rules without database access. Callers must validate stored opening actions before using the count-based `opening_actor` helper. Production profile approval still requires migration, writer and integration tests.
 
 ## Rule decisions before Stage 2
 
@@ -51,9 +51,9 @@ P1 and P2 below mean the validated, pinned display slots. Initial slots follow s
 | Situation | Existing behavior | Contract or required decision |
 |---|---|---|
 | Match target | `BracketRules.wins_needed` returns `ceil(num_rounds / 2)`. Ban quota is `num_players * num_bans`. | Reuse the target calculation for supported odd-best-of matches. Ban count does not set the win target. |
-| Pilot configuration | Model validators allow 2–4 players and best-of 3–25, including even values. | CORP Cup specifies the two profiles above. Ordinary picker order remains unresolved; other rule profiles stay unsupported until specified and tested. |
-| First pick, no defer | Prompt and initial round use the high-seed slot. | Confirm ordinary first-pick order; the written CORP Cup rules specify the first ban only. |
-| `loserpicks`, later ordinary round | Prompt and round creation use the previous round's loser. | P1 wins → P2 picks; P2 wins → P1 picks. Confirm this setting for the pilot if selected. |
+| Pilot configuration | Model validators allow 2–4 players and best-of 3–25, including even values. | CORP Cup specifies the two profiles above and loser picks. Other profiles stay unsupported until specified and tested. |
+| First pick, no defer | Prompt and initial round use the high-seed slot. | Confirmed: higher seed picks first. |
+| `loserpicks`, later ordinary round | Prompt and round creation use the previous round's loser. | Confirmed for CORP Cup: P1 wins → P2 picks; P2 wins → P1 picks. |
 | `alternate`, later ordinary round | `picking_player` repeats the previous picker; `add_round` records the previous loser. | Referee must confirm alternating by actual picker. Fixture-only expectation: P1 picks R1 → P2 picks R2, regardless of R1 winner. Do not silently reconcile production behavior. |
 | `deferban`, defer enabled | Opening ban order reverses. The first-pick prompt uses P2, but round creation stores P1. | Confirm whether P1 defers the ban and retains the first pick. Until confirmed, this profile cannot drive trusted chooser metadata. |
 | `deferboth`, defer enabled | Opening ban order and first-pick prompt/record use P2. | Confirm P2 bans first and picks first; slots remain unchanged. |
@@ -61,7 +61,7 @@ P1 and P2 below mean the validated, pinned display slots. Initial slots follow s
 | `single` tiebreaker | Remaining-chart filtering selects tiebreaker charts; picker/undo behavior still depends on shared branches. | Confirm chart count, selection ownership and undo. A sole candidate does not prove an automatic selection occurred. |
 | `csc` tiebreaker | Round creation chooses a tiebreaker category from prior fret/strum counts, with no player picker. | Confirm the category rule, unique candidate requirement and undo before enabling. Label a verified generated choice Automatic selection. |
 | `refdecide` tiebreaker | Chooser is null; candidates are unplayed, non-banned charts. | Confirm referee selection and undo; never credit a player with the pick. |
-| `banpick` / `bansave` tiebreaker | Chooser branches depend on action/round counts and previous loser/current winner; ban-save can select the sole remaining chart. | Existing later-ban behavior conflicts with the clarified opening-only CORP profile. Confirm the direct chooser and an explicit configuration mapping before changing writers; preserve other tournaments' behavior. |
+| `banpick` / `bansave` tiebreaker | Chooser branches depend on action/round counts and previous loser/current winner; ban-save can select the sole remaining chart. | CORP uses the previous loser for multiple choices and a neutral forced selection for one choice. Integrate through the proposed `corp_cup` mode; preserve existing modes. |
 | Tiebreaker pickability | `pickable_tb` includes a truthy string-index expression instead of the intended ruleset comparison. | Correct only with an approved truth table and regressions for the enabled profile. |
 
 Sources: [`BracketRules`](../corpoch/models/tournament.py), [`MatchAbstract.picking_player`, `add_round`, `setlist_remaining`](../corpoch/models/match.py), [rule labels](../corpoch/types.py), and [`DiscordMatchView`, `SongRoundSelect`, `PlayerRoundSelect`](../corpoch/dbot/view/reftool.py).
@@ -69,6 +69,8 @@ Sources: [`BracketRules`](../corpoch/models/tournament.py), [`MatchAbstract.pick
 The fixture-only profile is two players, best-of seven, three opening bans per player, ordinary alternating picks, no deferral and no seed reversal. It establishes visual answers without approving production rules. The three illustrated checkpoints omit two opening actions between the first and second image states.
 
 That six-action profile remains a generic design example, not the CORP Cup configuration. For CORP, the fourth opening action already creates blank R1 in the current workflow. Preserve the approved layout while showing the actual four-action sequence and explicit Ban/Save labels. A zero-effective-ban result still has opening history to display.
+
+The mockup's P2-winning-R1/P2-picking-R2 sequence is also illustrative. Under CORP Cup loser picks, P1 must win R1 for P2 to pick R2. If P2 wins R1, P1 picks R2 again. Keep the layout and populate the score and picker from actual records; do not copy the mockup's example sequence into live rule behavior.
 
 ## Authoritative records and planned metadata
 
@@ -224,6 +226,6 @@ Visual review compares each approved checkpoint against the reference at matchin
 
 The foundation checkpoint requires fixture/contract checks and proof that isolated execution rejects unexpected external access. No production service, credentials or database is needed. A fixture test is not a migration, MySQL consistency, OAuth, bot or browser test.
 
-Before Stage 2 changes chooser behavior, confirm CORP Cup first-pick, later-pick and direct tiebreaker-pick order. The confirmed ban/save and match-tiebreaker examples must become production behavior tests during that stage. Subsequent stages must prove coordinated writer/reader behavior, additive migration compatibility, staff login/access, refresh/visual behavior and measured cost. Keep the old overlay available. Disable the new viewer before rolling back to writers that cannot maintain provenance; retain columns and mark affected metadata unknown or restrict resumption to newly created matches.
+Before Stage 2 changes schema or chooser behavior, resolve the historical migration dependency and pass the isolated database gate. The confirmed ban/save and match-tiebreaker examples already exercise pure calculations; they must also verify production writers. Subsequent stages must prove coordinated writer/reader behavior, additive migration compatibility, staff login/access, refresh/visual behavior and measured cost. Keep the old overlay available. Disable the new viewer before rolling back to writers that cannot maintain provenance; retain columns and mark affected metadata unknown or restrict resumption to newly created matches.
 
 Stop for operator review on access leaks, incorrect identity/color mapping, false picker/ban claims, inconsistent scores, unresolved write races or excessive read cost. The viewer never repairs official results, resubmits exports or publishes screenshots automatically.

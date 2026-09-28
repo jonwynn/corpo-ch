@@ -7,13 +7,13 @@ Clone Hero Tournament organizer and tools.
 
 Development version: **1.7.0-beta.1**, unreleased.
 
-This fork is preparing a read-only live match viewer for tournament staff on the existing website. The first milestone adds the data contract, hand-authored match fixtures and isolated foundation tests. The viewer page is not implemented yet.
+This fork is preparing a read-only live match viewer for tournament staff on the existing website. The current milestone provides the data contract, independent fixtures, isolated CORP Cup rule calculations and a presentation builder. The viewer page and production integration are not implemented yet.
 
 - [Viewer contract and rule decisions](docs/match-viewer-contract.md)
 - [Foundation tests and validation limits](docs/match-viewer-development.md)
 - [Changelog](CHANGELOG.md)
 
-The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. CORP Cup opening-only ban/save rules and tiebreaker candidates are documented; ordinary and direct tiebreaker song-pick order still need confirmation before production chooser changes.
+The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. CORP Cup uses opening-only bans, higher-seed first pick and subsequent loser picks. Database integration is paused because the initial migration requires a legacy encryption dependency absent from the current requirements; see the development notes before running migration tests.
 
 ## Links
 

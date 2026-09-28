@@ -1,6 +1,6 @@
 # Match viewer development
 
-Version **1.7.0-beta.1** is unreleased. The current milestone supplies the [contract](match-viewer-contract.md), independent fixtures and a guarded foundation test runner. A viewer page and model changes are not implemented.
+Version **1.7.0-beta.1** is unreleased. The current milestone supplies the [contract](match-viewer-contract.md), independent fixtures, pure rule and presentation helpers, and guarded test runners. The viewer page, model changes and production integration are not implemented.
 
 ## Run foundation tests
 
@@ -20,7 +20,24 @@ Use a fresh process. The runner clears deployment environment variables before d
 
 Python audit and import hooks catch accidental I/O through the tested entry point. They are regression guards, not an operating-system security sandbox for untrusted code. Running test modules directly bypasses this entry point. The bootstrap tests deliberately attempt prohibited operations and require rejection before I/O.
 
-The current suite must not import the application. Importing the package normally initializes Celery and may trigger other dependency startup. Later model tests must deliberately extend this boundary, retaining dummy settings and I/O guards, and verify isolated Django initialization before loading models. The prepared settings and empty URL configuration do not demonstrate that migrations or normal deployment startup work.
+The foundation suite still prohibits application imports. Model-only checks are explicitly skipped by this runner. Importing the package normally initializes Celery and may trigger other dependency startup, so application checks require the separate entry point below.
+
+## Run isolated rule and presentation checks
+
+Use PowerShell from the repository root with the existing application virtual environment. Estimated duration: 2–10 seconds; CPU only, no GPU. This command initializes Django with test settings and runs pure calculations plus isolation checks. Django skips the unused database; this command does not validate migrations.
+
+```powershell
+.\.venv\Scripts\python.exe -m tests.viewer_model_test_bootstrap tests.test_model_test_bootstrap.ViewerModelBootstrapBoundaryTests tests.model_test_corp_cup_rules tests.model_test_match_viewer
+```
+
+The explicit application runner permits model imports while retaining temporary storage, dummy settings, network/process guards and blocked provider/task/native database imports. During Django setup on Windows only, it supplies the known OS family to Celery's platform check, which otherwise launches a subprocess. That test-only substitution does not validate normal Celery startup.
+
+The pure helpers are not connected to views or writers:
+
+- [`match_rules.py`](../corpoch/match_rules.py) validates CORP Cup opening actions and derives legal next selections from completed rounds. Inputs use higher/lower sporting order, independently of pinned display colors.
+- [`match_viewer.py`](../corpoch/match_viewer.py) accepts a scoped primitive snapshot and returns allowlisted presentation values. The future reader must establish actual staff access, validate the rule profile and materialize a consistent snapshot. No model query or write occurs in the builder.
+
+Production snapshots must not use `fixture_only` to bypass profile validation. Assignment pins include participant/seed pairs, group and reversal; legacy pair-only fixture pins do not detect group or reversal changes. The presentation digest includes only returned data and is an equality check, not a sequence number. Withheld chart IDs and titles are excluded from output.
 
 ## Fixture meaning
 
@@ -30,16 +47,28 @@ Fixture checks verify references, answer arithmetic and important distinctions: 
 
 ## Validation record and limits
 
-The foundation runner was checked on Windows with CPython 3.14.7. Application dependency metadata was inspected without starting services. Installed versions include Django 6.0.8 and Celery 5.6.3; neither is exercised by the foundation suite. Other runtime combinations remain unverified.
+Validation used Windows, CPython 3.14.7, Django 6.0.8 and Celery 5.6.3 in the existing environment. The foundation suite does not import Django or Celery. The explicit application runner verifies guarded Django initialization; other runtime combinations and normal deployment startup remain unverified.
 
 The initial 2026-09-28 milestone passed 36 tests: 26 fixture checks and 10 bootstrap checks, using 35 match cases and 14 later-stage scenario examples. Independent review found two incorrect fixture answers; both were corrected and covered by negative checks before the final passing run. Syntax inspection, documentation links and Git whitespace checks also passed.
 
-The CORP Cup rule checkpoint adds two numeric profiles, four opening sequences and eight tiebreaker examples in `tests/fixtures/corp_cup_rules.json`. Its eight additional integrity checks bring the guarded suite to **44 passing tests**, also confirmed by independent review. The corpus follows opening-only bans and keeps unresolved picker choices explicit. No production sporting-rule behavior was exercised.
+The CORP Cup corpus adds two numeric profiles, four opening sequences and eight tiebreaker examples in `tests/fixtures/corp_cup_rules.json`. It records opening-only bans, higher-seed first pick and subsequent loser picks. The foundation suite passes **44 tests**, with five model-only checks explicitly skipped. Separate rule tests cover confirmed selection behavior, corrections and invalid histories; presentation tests compare all 35 independent viewer fixtures and exercise privacy, access, identity and lifecycle boundaries. No production sporting-rule behavior is changed or exercised.
 
-The repository has no configured project-wide formatter or linter command. The milestone uses the focused suite, syntax inspection and Git whitespace checks. Normal Django tests, migrations, MySQL transactions, OAuth, Discord, screenshots, exports and browser rendering remain later verification gates. The existing Python minimum-version declaration and missing Hydra initialization path need isolated application-runtime checks before deployment.
+The combined guarded application check passes **49 tests**: 15 rule tests, 30 presentation tests and four bootstrap boundary checks. Django skips the unused database. Independent review verified corrections for malformed results appearing as zero, inconsistent round history, results after a decisive win, missing action owners and withheld charts leaking through another record. Separate CORP snapshots cover both next-picker outcomes without altering the original design fixtures.
 
-## Next development gate
+The repository has no configured project-wide formatter or linter command. Validation uses focused tests, syntax inspection and Git whitespace checks. MySQL transactions, OAuth, Discord, screenshot processing, exports and browser rendering remain later verification gates. The existing Python minimum-version declaration and missing Hydra initialization path also need application-runtime checks before deployment.
 
-CORP Cup defines group matches with 11 songs and a first-to-four target, and playoffs with 13 songs and a first-to-five target. Both use four opening ban/save actions and prohibit deferral. No bans occur after opening. Ordinary first-pick, later-pick and direct tiebreaker-pick order still needs referee confirmation. Current ban-save tiebreaker code expects an extra ban and does not match the clarified profile unchanged. Keep its configuration mapping unresolved until the direct chooser is settled; preserve other tournaments' behavior.
+## Blocked database gate
 
-After that confirmation, implement the minimum provenance fields and presentation layer with compatibility tests. Build the fixture layout against the same contract, then connect one match, add refresh/error handling, verify integration and prepare a limited staff rollout. Keep the existing overlay available throughout.
+The database smoke test currently fails while loading [`0001_initial.py`](../corpoch/migrations/0001_initial.py): it imports `encrypted_json_fields.fields`, which is absent from the current environment and [`requirements.txt`](../requirements.txt). A later migration switches to `encrypted_fields.fields`; the listed `django-fernet-encrypted-fields` dependency supplies that newer module. Successful model import does not resolve the historical migration import.
+
+The following PowerShell command reproduces the blocked gate using temporary SQLite storage. Estimated duration: 2–10 seconds to the current failure; CPU only, no GPU. It does not connect to a deployment database.
+
+```powershell
+.\.venv\Scripts\python.exe -m tests.viewer_model_test_bootstrap
+```
+
+Expected current result: `ModuleNotFoundError: No module named 'encrypted_json_fields'`. No dependency was installed, migration rewritten, replacement module aliased or migration disabled to obtain a passing result.
+
+The next prerequisite is to identify and verify the legacy dependency, restore migration loading in an isolated environment and rerun the complete database gate. Its compatibility with the current Django/Python versions is unverified. Stop for review before schema or referee-write changes; a passing pure suite does not remove this blocker.
+
+Once that gate passes, integrate the proposed `corp_cup` mode, minimum provenance fields and coordinated writers, preserving existing tournament profiles. Then build the approved fixture layout, connect one selected match, add refresh/error handling, verify integration and prepare a limited staff rollout. Keep the existing overlay available throughout.

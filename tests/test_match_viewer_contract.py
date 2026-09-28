@@ -492,14 +492,18 @@ class CorpCupRulesContractTests(unittest.TestCase):
         self.assertEqual(set(expected["unplayed_saved_chart_ids"]), unplayed_saves)
         self.assertNotIn("tiebreaker_ban_chart_id", case)
         self.assertIsNone(expected["ban_actor"])
-        self.assertIsNone(expected["pick_actor"])
         self.assertNotIn("eligible_ban_chart_ids", expected)
         self.assertNotIn("raw_after_ban_chart_ids", expected)
         if len(remaining) == 1:
             self.assertEqual(expected["selection_kind"], "automatic")
             self.assertIn(expected["forced_chart_id"], remaining)
+            self.assertIsNone(expected["pick_actor"])
         else:
-            self.assertIsNone(expected["selection_kind"])
+            self.assertEqual(expected["selection_kind"], "player")
+            self.assertEqual(
+                expected["pick_actor"],
+                next(player for player in participants if player != winners[-1]),
+            )
             self.assertIsNone(expected["forced_chart_id"])
         pickable = remaining - unplayed_saves if len(unplayed_saves) == 2 else remaining
         self.assertEqual(set(expected["eligible_pick_chart_ids"]), pickable)
@@ -526,8 +530,8 @@ class CorpCupRulesContractTests(unittest.TestCase):
                     profile["opening_action_count"],
                 )
                 self.assertEqual(mapping["ban_ruleset"], "bansave")
-                self.assertIsNone(mapping["tb_ruleset"])
-                self.assertIsNone(mapping["pick_ruleset"])
+                self.assertEqual(mapping["tb_ruleset"], "corp_cup")
+                self.assertEqual(mapping["pick_ruleset"], "loserpicks")
 
     def test_four_opening_action_sequences_and_effective_bans(self):
         self.assertEqual(len(self.sequences), 4)
@@ -606,16 +610,19 @@ class CorpCupRulesContractTests(unittest.TestCase):
         self.assertEqual(len(one_remaining["eligible_pick_chart_ids"]), 5)
         self.assertEqual(len(none_remaining["eligible_pick_chart_ids"]), 5)
 
-    def test_partial_confirmation_does_not_guess_missing_sporting_rules(self):
+    def test_confirmed_pick_order_preserves_referee_decisions_for_tied_scores(self):
         confirmation = self.fixture_document["confirmation"]
-        self.assertEqual(confirmation["status"], "partially_confirmed")
+        self.assertEqual(confirmation["status"], "match_flow_confirmed")
         self.assertFalse(confirmation["live_profile_approved"])
         self.assertFalse(confirmation["implementation_verified"])
-        self.assertIsNone(confirmation["ordinary_first_picker"])
-        self.assertIsNone(confirmation["ordinary_later_picker"])
+        self.assertEqual(confirmation["ordinary_first_picker"], "higher_seed")
+        self.assertEqual(confirmation["ordinary_later_picker"], "previous_song_loser")
         self.assertIsNone(confirmation["tied_song_score_resolution"])
         self.assertFalse(confirmation["tiebreaker_extra_ban_allowed"])
-        self.assertIsNone(confirmation["tiebreaker_picker"])
+        self.assertEqual(
+            confirmation["tiebreaker_picker"],
+            "previous_song_loser_when_multiple_eligible_charts",
+        )
         self.assertFalse(confirmation["csc_reference_is_existing_csc_tiebreaker_mode"])
         self.assertFalse(confirmation["defer_allowed"])
         self.assertFalse(confirmation["opening_saved_chart_reban_allowed"])

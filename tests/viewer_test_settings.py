@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 
 
-if os.environ.get("CORPO_VIEWER_TEST_MODE") != "isolated":
-    raise RuntimeError("Use python -m tests.viewer_test_bootstrap.")
+if os.environ.get("CORPO_VIEWER_TEST_MODE") not in {"isolated", "isolated-model"}:
+    raise RuntimeError("Use an isolated viewer test bootstrap.")
 
 # Django requires these public setting names.
 BASE_DIR = Path(os.environ["CORPO_VIEWER_TEST_DIRECTORY"])
@@ -21,7 +21,13 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
-        "TEST": {"NAME": ":memory:"},
+        "TEST": {
+            "NAME": (
+                str(BASE_DIR / "viewer-test.sqlite3")
+                if os.environ["CORPO_VIEWER_TEST_MODE"] == "isolated-model"
+                else ":memory:"
+            ),
+        },
     },
 }
 INSTALLED_APPS = [
