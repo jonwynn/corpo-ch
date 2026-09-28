@@ -2,7 +2,7 @@
 
 Version **1.7.0-beta.1**, unreleased. Complete the [read-only service check](match-viewer-staging.md#4-verify-development-identities-and-access) first. That check verifies credentials and resource metadata; it does not configure the application or start a runtime.
 
-The current checkpoint runs the local website and a fresh MySQL staging database in **Ubuntu 24.04 on WSL 2**. It supports browser login with the development Discord application. Match-viewer gates stay off, and signing in grants no staff or referee access. The Discord bot, workers, scheduler, dedicated game server and spreadsheet exports are deferred. The Windows fixture preview and disposable MySQL checker remain separate tools.
+The local checkpoint runs the website and a fresh MySQL staging database in **Ubuntu 24.04 on WSL 2**. Browser login with the development Discord application is verified. Ordinary `serve` keeps match-viewer gates off, and signing in grants no staff or referee access. A separately prepared [sample-match pilot](match-viewer-local-pilot.md) supports the verified account with automatic refresh. The Discord bot, workers, scheduler, dedicated game server and spreadsheet exports are deferred. The Windows fixture preview and disposable MySQL checker remain separate tools.
 
 The bot connects directly to Redis in `CorpoDbot.__init__`, and Celery handles background work. [Celery does not support native Windows](https://docs.celeryq.dev/en/stable/faq.html#windows). Running only Redis in Linux would leave the worker on an unsupported platform. WSL supplies a Linux runtime without adding Docker or replacing the application's existing components.
 
@@ -166,7 +166,7 @@ Paste this block into **Window 2, normal Windows PowerShell**. Estimated duratio
 }
 ```
 
-Open [the local website](http://127.0.0.1:8766/home), select its Discord login action, and verify the application name before approving consent. Allow approximately **1–3 minutes**; no GPU. A successful callback should return to the local site and show the signed-in account. Signing in alone does not assign staff, superuser or referee privileges. The viewer remains disabled in this checkpoint.
+Open [the local website](http://127.0.0.1:8766/home), select its Discord login action, and verify the application name before approving consent. Allow approximately **1–3 minutes**; no GPU. A successful callback should return to the local site and show the signed-in account. Signing in alone does not assign staff, superuser or referee privileges. If the prepared instance shows **Open sample match viewer**, continue with the [sample-match guide](match-viewer-local-pilot.md). Otherwise it remains in login-only mode.
 
 Report whether the home page loads, whether the displayed Discord application is correct, and whether login returns successfully. For a failure, report the visible error text. Do not share the complete callback URL, browser cookies, private JSON, token values or raw logs; callback addresses can contain short-lived codes and state values. Registering a redirect alone does not prove login works.
 
@@ -211,7 +211,7 @@ To open this guide in **Notepad++**, paste into normal PowerShell, such as Windo
 
 ## Maintainer preparation for a new instance
 
-The current local checkpoint has passed the isolated suites, fresh-process startup smoke, eight native MySQL checks, database ownership/grant validation, fresh migrations and local HTTP/browser rendering. The native database is MySQL 8.0.46/InnoDB with mysqlclient 2.3.0; the Linux application uses Python 3.12.3 and Django 6.0.8. Real Discord consent and callback acceptance remain the step 5 manual check. These results do not enable the viewer or qualify the deferred bot/export processes.
+The local checkpoint has passed isolated suites, fresh-process startup smoke, thirteen native MySQL checks, database ownership/grant validation, fresh migrations and local HTTP/browser rendering. The native database is MySQL 8.0.46/InnoDB with mysqlclient 2.3.0; the Linux application uses Python 3.12.3 and Django 6.0.8. Real Discord consent and callback acceptance were confirmed in the browser, followed by a read-only DEV referee-membership check. The explicitly enabled synthetic pilot also passed database-backed rendering, live picks/results and undo checks. This does not qualify the deferred bot/export processes or another deployment.
 
 The prepared-PC commands above assume this work is complete. They cannot prepare a fresh checkout or repair a failed provision. Keep generated environments, credentials, logs and databases outside the repository. During preparation that spans separate commands, keep a foreground Ubuntu session open as described in step 4; an installed Supervisor service alone does not keep the distribution running.
 

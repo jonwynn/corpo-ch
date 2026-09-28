@@ -18,7 +18,7 @@ def main(arguments=None):
     parser = argparse.ArgumentParser(description="Run the dedicated local web-only staging instance.")
     parser.add_argument("--config", required=True, help="Absolute path to the private Linux JSON configuration.")
     parser.add_argument("--expected-bot-id", required=True, help="Independently confirmed DEV application ID.")
-    parser.add_argument("command", choices=("check", "migrate", "serve"))
+    parser.add_argument("command", choices=("check", "migrate", "serve", "serve-viewer", "serve-viewer-live"))
     options = parser.parse_args(arguments)
     try:
         configuration = load_configuration(options.config, options.expected_bot_id)

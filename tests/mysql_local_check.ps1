@@ -265,13 +265,13 @@ try {
         stop_local_check 'The prepared MySQL server did not become ready within 45 seconds.'
     }
 
-    $current_step = 'running the eight isolated MySQL checks'
+    $current_step = 'running the isolated MySQL checks'
     $env:MYSQL_TEST_HOST = '127.0.0.1'
     $env:MYSQL_TEST_PORT = '3307'
     $env:MYSQL_TEST_USER = $runner_credential.UserName
     $env:MYSQL_TEST_PASSWORD = $runner_credential.GetNetworkCredential().Password
     [Environment]::SetEnvironmentVariable('MYSQL_PWD', $null, 'Process')
-    Write-Host 'Running eight checks in a newly generated, disposable validation database.'
+    Write-Host 'Running checks in a newly generated, disposable validation database.'
     & $python_path -m tests.mysql_viewer_check --allow-create-test-database
     if ($LASTEXITCODE -ne 0) {
         stop_local_check 'The native MySQL checks did not pass. Review the check output above.'
@@ -338,5 +338,5 @@ if ($failure_message -or $shutdown_message -or -not $checks_passed) {
     if ($shutdown_message) { Write-Host $shutdown_message -ForegroundColor Red }
     throw 'Local MySQL validation is incomplete. Deployment settings and viewer gates were not changed.'
 }
-Write-Host 'PASS: All eight native MySQL checks passed and the local server stopped.' -ForegroundColor Green
+Write-Host 'PASS: All native MySQL checks passed and the local server stopped.' -ForegroundColor Green
 Write-Host 'Deployment settings, saved configuration, and viewer gates were not changed.'

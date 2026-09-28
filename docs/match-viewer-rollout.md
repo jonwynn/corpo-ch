@@ -1,6 +1,6 @@
 # Match viewer rollout and rollback
 
-Version **1.7.0-beta.1** is unreleased. No deployment has been performed. Start with an isolated staging environment and a small staff pilot after the checks below pass. The existing overlay remains the fallback.
+Version **1.7.0-beta.1** is unreleased. No production deployment has been performed. A single-account [synthetic local pilot](match-viewer-local-pilot.md) runs in the isolated WSL environment. Broader staff rollout still requires the checks below. The existing overlay remains the production fallback.
 
 ## Before staging
 
@@ -36,7 +36,7 @@ Verify that the deployment serves `corpoch/match_viewer.css` and `corpoch/match_
 
 ## Verify MySQL before approving its gate
 
-The eight native checks passed on the prepared local **MySQL 8.4.11/InnoDB** instance with **mysqlclient 2.3.0**, with Discord requests mocked. The original five viewer checks also passed in standalone PowerShell after relocating the instance outside AppData. The database was removed and the server stopped afterward. This verifies that local configuration, not the deployment's connection settings or load. The MySQL gate remains off until deployment-specific checks also pass.
+The expanded **thirteen native checks** pass on the separate Linux **MySQL 8.0.46/InnoDB** instance with **mysqlclient 2.3.0**, with Discord requests mocked and disposable-database cleanup verified. The earlier eight-check suite passed on Windows MySQL 8.4.11; those historical results do not establish the new cases on Windows. The isolated sample's web profile and real Discord login were checked separately. The MySQL gate is enabled only for that explicitly selected local sample; ordinary settings and other deployments remain off until qualified.
 
 On the prepared development PC, use [step 5 of the local guide](match-viewer-development.md#5-run-the-prepared-local-mysql-checks). That command handles startup, encrypted credentials and shutdown on port **3307**. The manual block below is for another separately prepared local test server; it does not install or start MySQL.
 
@@ -74,7 +74,7 @@ Paste the entire block into a fresh **PowerShell** window. It enters the example
 
 The checker supplies dummy settings, blocks deployment `.env` and service imports, and creates only `corpo_viewer_validation_<generated-id>`. It refuses to reuse an existing schema. Normal completion, including test failures, removes only the database it successfully created. If a worker cannot stop or cleanup fails, it retains that database and reports its exact name for local review. It does not alter deployment settings or enable viewer gates. Native test failure tracebacks can include local server/account diagnostics; review logs before sharing them.
 
-The eight checks cover default-off gates, a coherent reader snapshot during a concurrent score/next-round update, two competing actions with the same revision token, connection/isolation cleanup, fresh staff/hidden-chart checks, one-use OAuth attempts, concurrent browser/scheduled renewal and a callback overlapping renewal. Discord responses are mocked. A passing run reports eight tests and successful database removal. Exit status is `0` for success, `1` for test failures, `2` for setup/cleanup errors and `130` for interruption.
+The thirteen checks cover default-off gates, coherent snapshots during result/correction/removed-round/reassignment commits, competing revision tokens, normal and failed read cleanup, nested-transaction refusal, disabled accounts, staff revocation and hidden charts, plus OAuth attempt/token concurrency. Discord responses are mocked. A passing run reports thirteen tests and successful database removal. Exit status is `0` for success, `1` for test failures, `2` for setup/cleanup errors and `130` for interruption.
 
 Record MySQL/driver versions and results. Before enabling a deployment, also exercise its own configuration:
 

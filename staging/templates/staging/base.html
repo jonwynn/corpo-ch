@@ -21,10 +21,10 @@
         </label>
     </div>
     <article class="mv-viewer">
-        <header class="mv-header"><h1>Corpo CH local staging</h1><span class="mv-audience">Development login check</span></header>
+        <header class="mv-header"><h1>Corpo CH local staging</h1><span class="mv-audience">{% if staging_viewer_enabled %}Sample match check{% else %}Development login check{% endif %}</span></header>
         <div class="mv-state">{% block content %}{% endblock %}</div>
     </article>
-    <p class="mv-connection">Local development environment · match viewing is not enabled.</p>
+    <p class="mv-connection">Local development environment · {% if staging_viewer_enabled %}sample data only · {% if staging_viewer_polling %}automatic updates enabled{% else %}reload to refresh{% endif %}{% else %}match viewing is not enabled{% endif %}.</p>
 </main>
 <footer class="mv-footer">Created by <a href="https://www.twitch.tv/jonw_CH">@jonw_CH on Twitch</a>. Built on Corpo CH.</footer>
 </body>

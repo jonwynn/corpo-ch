@@ -5,18 +5,21 @@ import importlib.util
 import io
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlsplit
 
 from django.conf import settings
+from django.db import connection
 from django.test import RequestFactory, TestCase
 from django.urls import clear_url_caches, resolve, Resolver404
 
 import corpoch
 from corpoch.models import DiscordUser
-from staging.configuration import validate_configuration
-from staging.runtime import create_request_handler, create_static_handler, create_web_server, serve_web
+from staging.configuration import StagingConfigurationError, validate_configuration
+from staging.runtime import create_request_handler, create_static_handler, create_web_server, run_command, serve_web
 from staging.settings import build_web_settings
+from staging.pilot import find_signed_in_account, inspect_sample, prepare_sample
 from tests.model_test_discord_auth import load_auth_views
 from tests.test_staging_configuration import create_configuration_values
 
@@ -113,7 +116,11 @@ class StagingWebTests(TestCase):
                 with self.subTest(path=path):
                     response = handler.get_response(factory.get(path))
                     self.assertEqual(response.status_code, expected)
-                    response.close()
+                    # A direct static handler lacks the test client's signal
+                    # wrapper. Keep request_finished from closing the enclosing
+                    # TestCase transaction; real socket cleanup is tested separately.
+                    with patch.object(connection, "close_if_unusable_or_obsolete"):
+                        response.close()
 
     def test_server_binds_only_loopback_and_uses_the_static_wsgi_wrapper(self):
         from django.contrib.staticfiles.handlers import StaticFilesHandler
@@ -138,3 +145,89 @@ class StagingWebTests(TestCase):
         self.assertTrue(server.daemon_threads)
         self.assertIsNone(server.connections_override)
         self.assertEqual(create_request_handler().timeout, 10)
+
+    def test_viewer_checkpoint_uses_existing_login_and_auth_for_sample_links(self):
+        from django.utils import timezone
+        from corpoch.models import DiscordToken
+        from staging.viewer_fixture import prepare_fixture
+
+        staff = DiscordUser.objects.create(
+            id=89001234567890124, global_name="Fixture Referee", last_login=timezone.now(),
+        )
+        DiscordToken.objects.create(user=staff, access_token="fixture", refresh_token="fixture")
+        prepare_fixture(89001234567890125, staff.pk, [{"id": 89001234567890126, "name": "Ref"}])
+        self.client.force_login(staff, backend="corpoch.auth.DiscordBackend")
+        self.assertNotContains(self.client.get("/home"), "Open sample match viewer")
+        with self.settings(MATCH_VIEWER_ENABLED=True, MATCH_VIEWER_MYSQL_VERIFIED=True):
+            home = self.client.get("/home")
+            self.assertContains(home, "Open sample match viewer")
+            self.assertContains(home, "sample data only")
+            self.assertContains(home, "reload to refresh")
+            self.assertContains(self.client.get("/match-viewer/"), "local-viewer-pilot")
+            self.assertContains(self.client.get("/match-viewer/local-viewer-pilot/"), "Blue Player")
+            self.client.logout()
+            self.assertEqual(self.client.get("/match-viewer/local-viewer-pilot/state/").status_code, 401)
+            self.assertNotContains(self.client.get("/home"), "Open sample match viewer")
+        self.assertEqual(find_signed_in_account("Fixture Referee").pk, staff.pk)
+        with self.assertRaises(ValueError):
+            find_signed_in_account("fixture referee")
+        with redirect_stdout(io.StringIO()) as output:
+            token = inspect_sample()
+        self.assertEqual(len(token), 64)
+        self.assertIn("Sample fragment:", output.getvalue())
+        self.assertNotIn("fixture-access", output.getvalue())
+
+    def test_viewer_modes_require_database_and_fixture_checks_before_enabling(self):
+        for mode in ("serve", "serve-viewer", "serve-viewer-live"):
+            with (
+                self.subTest(mode=mode),
+                self.settings(MATCH_VIEWER_ENABLED=False, MATCH_VIEWER_MYSQL_VERIFIED=False, MATCH_VIEWER_POLLING_ENABLED=False),
+                patch("staging.runtime.configure_web_runtime"),
+                patch("django.setup"),
+                patch("staging.runtime.validate_database_boundary") as boundary,
+                patch("staging.viewer_fixture.validate_fixture") as fixture,
+                patch("staging.runtime.serve_web") as serve,
+            ):
+                run_command(self.configuration, mode)
+                boundary.assert_called_once()
+                self.assertEqual(fixture.call_count, int(mode != "serve"))
+                serve.assert_called_once()
+                self.assertEqual(settings.MATCH_VIEWER_ENABLED, mode != "serve")
+                self.assertEqual(settings.MATCH_VIEWER_MYSQL_VERIFIED, mode != "serve")
+                self.assertEqual(settings.MATCH_VIEWER_POLLING_ENABLED, mode == "serve-viewer-live")
+        for failed_check in ("staging.runtime.validate_database_boundary", "staging.viewer_fixture.validate_fixture"):
+            with (
+                self.subTest(failed_check=failed_check),
+                self.settings(MATCH_VIEWER_ENABLED=False, MATCH_VIEWER_MYSQL_VERIFIED=False),
+                patch("staging.runtime.configure_web_runtime"), patch("django.setup"),
+                patch("staging.runtime.validate_database_boundary"),
+                patch("staging.viewer_fixture.validate_fixture"),
+                patch(failed_check, side_effect=StagingConfigurationError("Unverified sample.")),
+                patch("staging.runtime.serve_web") as serve,
+            ):
+                with self.assertRaises(StagingConfigurationError):
+                    run_command(self.configuration, "serve-viewer")
+                serve.assert_not_called()
+                self.assertFalse(settings.MATCH_VIEWER_ENABLED)
+                self.assertFalse(settings.MATCH_VIEWER_MYSQL_VERIFIED)
+
+    def test_failed_remote_referee_check_cannot_create_sample_or_grant_access(self):
+        from staging.referee_check import RefereeCheckError
+
+        options = SimpleNamespace(
+            credentials_file="/private/dev-credentials.env", guild_id="89001234567890125",
+            referee_role_id=["89001234567890126"], account_name="Fixture Referee",
+        )
+        with (
+            patch("staging.pilot.find_signed_in_account", return_value=SimpleNamespace(pk=89001234567890124)),
+            patch("tests.staging_preflight.read_private_text", return_value='BOT_TOKEN="fixture-bot-token"'),
+            patch("staging.referee_check.verify_referee", side_effect=RefereeCheckError("Access denied.")) as verify,
+            patch("staging.viewer_fixture.prepare_fixture") as prepare,
+        ):
+            with self.assertRaises(RefereeCheckError):
+                prepare_sample(options, self.configuration)
+            verify.assert_called_once_with(
+                "fixture-bot-token", self.configuration.bot_id, options.guild_id,
+                "89001234567890124", options.referee_role_id,
+            )
+            prepare.assert_not_called()

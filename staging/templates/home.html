@@ -1,7 +1,12 @@
 {% extends "staging/base.html" %}
 {% block content %}
     {% if discord_login_error %}<p role="alert">{{ discord_login_error }}</p>{% endif %}
-    <p>Sign in to verify the local Discord connection.</p>
-    <p><a href="{{ auth_url }}">Discord Login</a></p>
+    {% if user.is_authenticated %}
+        <p>Signed in as {{ user.global_name|default:"a Discord account" }}.</p>
+        {% if staging_viewer_enabled %}<p><a href="{% url 'match_viewer_index' %}">Open sample match viewer</a></p>{% endif %}
+    {% else %}
+        <p>Sign in to verify the local Discord connection.</p>
+        <p><a href="{{ auth_url }}">Discord Login</a></p>
+    {% endif %}
     <p>Bot commands, background jobs and spreadsheet exports are not running in this web environment.</p>
 {% endblock %}

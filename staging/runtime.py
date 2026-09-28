@@ -200,7 +200,14 @@ def serve_web(configuration):
     with create_web_server(configuration.browser_port) as server:
         server.set_app(create_static_handler(get_wsgi_application()))
         print(f"Local web staging is available at http://127.0.0.1:{configuration.browser_port}/home", flush=True)
-        print("Match viewer gates are off. Bot, workers and spreadsheet exports are not running.", flush=True)
+        from django.conf import settings
+
+        if settings.MATCH_VIEWER_ENABLED:
+            refresh = "automatic updates" if settings.MATCH_VIEWER_POLLING_ENABLED else "manual refresh"
+            print(f"The isolated sample match is available with {refresh}.", flush=True)
+        else:
+            print("Match viewer gates are off.", flush=True)
+        print("Bot, workers and spreadsheet exports are not running.", flush=True)
         server.serve_forever()
 
 
@@ -209,8 +216,8 @@ def run_command(configuration, command):
     Runs one fixed management operation or the local web server
 
     :param WebConfiguration configuration: Validated private configuration
-    :param str command: One of check, migrate or serve"""
-    if command not in {"check", "migrate", "serve"}:
+    :param str command: Explicit management or local web checkpoint"""
+    if command not in {"check", "migrate", "serve", "serve-viewer", "serve-viewer-live"}:
         raise StagingConfigurationError("This command is unavailable in the local web runtime.")
     configure_web_runtime(configuration)
     import django
@@ -219,7 +226,15 @@ def run_command(configuration, command):
 
     django.setup()
     validate_database_boundary(connection, configuration)
-    if command == "serve":
+    if command in {"serve-viewer", "serve-viewer-live"}:
+        from django.conf import settings
+        from staging.viewer_fixture import validate_fixture
+
+        validate_fixture()
+        settings.MATCH_VIEWER_ENABLED = True
+        settings.MATCH_VIEWER_MYSQL_VERIFIED = True
+        settings.MATCH_VIEWER_POLLING_ENABLED = command == "serve-viewer-live"
+    if command in {"serve", "serve-viewer", "serve-viewer-live"}:
         serve_web(configuration)
         return
     with io.StringIO() as output:

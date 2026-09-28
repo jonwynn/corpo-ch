@@ -56,6 +56,7 @@ def build_web_settings(configuration):
             "OPTIONS": {"context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
+                "staging.context.viewer_checkpoint",
             ]},
         }],
         "DATABASES": {"default": {
@@ -66,7 +67,10 @@ def build_web_settings(configuration):
             "HOST": "127.0.0.1",
             "PORT": configuration.database_port,
             "CONN_MAX_AGE": 0,
-            "OPTIONS": {"charset": "utf8mb4", "connect_timeout": 5, "read_timeout": 15, "write_timeout": 15},
+            "OPTIONS": {
+                "charset": "utf8mb4", "isolation_level": "read committed",
+                "connect_timeout": 5, "read_timeout": 15, "write_timeout": 15,
+            },
         }},
         "CACHES": {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}},
         "STATIC_URL": "/static/",

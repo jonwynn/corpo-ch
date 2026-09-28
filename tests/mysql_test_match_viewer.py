@@ -18,20 +18,23 @@ if (
 from django.conf import settings
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
-from django.db import connection, connections
+from django.db import DatabaseError, connection, connections, transaction
 from django.test import RequestFactory, TransactionTestCase, override_settings
 from django.utils import timezone
 
 from corpoch import discord_oauth, match_actions
 from corpoch.dbot.models import Guilds
 from corpoch.match_actions import (
-    StaleMatchAction, get_match_state_token, record_opening_action,
-    record_round_winner, select_chart,
+    StaleMatchAction, assign_match_players, get_match_state_token, record_opening_action,
+    record_round_winner, select_chart, undo_match_action,
 )
 from corpoch.match_viewer import build_match_presentation
-from corpoch.match_viewer_reader import read_match_snapshot
+from corpoch.match_viewer_reader import ViewerReadError, match_read_transaction, read_match_snapshot
 from corpoch.match_viewer_views import match_viewer_state
-from corpoch.models import Bracket, DiscordToken, DiscordUser, Match, Tournament
+from corpoch.models import (
+    Bracket, DiscordToken, DiscordUser, GroupSeed, Match, Tournament, TournamentPlayer,
+)
+from corpoch.types import CH_Name, PlayerConfig
 from tests.match_fixtures import create_corp_match
 
 
@@ -88,6 +91,58 @@ class MysqlMatchViewerChecks(TransactionTestCase):
         if error is not None:
             raise error
         return name, result
+
+    def read_during_commit(self, operation):
+        """Reads across a committed change and returns coherent old and new snapshots.
+
+        :param callable operation: Supported writer to run after the first snapshot read
+        :return: Snapshots from before and after the committed change"""
+        expected = read_match_snapshot(self.staff.pk, self.match.pk)
+        first_read = threading.Event()
+        writer_finished = threading.Event()
+        outcomes = Queue()
+
+        def read_snapshot():
+            def pause_after_account_read(execute, sql, params, many, context):
+                result = execute(sql, params, many, context)
+                if sql.lstrip().upper().startswith("SELECT") and "corpoch_discorduser" in sql and not first_read.is_set():
+                    first_read.set()
+                    if not writer_finished.wait(timeout=10):
+                        raise AssertionError("The writer did not commit before the snapshot continued.")
+                return result
+
+            with connections["default"].execute_wrapper(pause_after_account_read):
+                return read_match_snapshot(self.staff.pk, self.match.pk)
+
+        reader = self.start_worker("correction-reader", read_snapshot, outcomes)
+        try:
+            self.assertTrue(first_read.wait(timeout=10), "Reader never established its first SELECT snapshot.")
+            operation()
+        finally:
+            writer_finished.set()
+        name, previous = self.collect_outcome(outcomes)
+        reader.join(timeout=20)
+        self.assertFalse(reader.is_alive())
+        self.assertEqual(previous, expected)
+        current = read_match_snapshot(self.staff.pk, self.match.pk)
+        self.assertTrue(previous["history_valid"] and current["history_valid"])
+        return previous, current
+
+    def assert_fresh_read_committed_connection(self, previous_connection):
+        """Checks that a closed snapshot connection cannot retain its isolation setting.
+
+        :param int previous_connection: MySQL identifier before the snapshot read"""
+        self.assertIsNone(connection.connection)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT CONNECTION_ID()")
+            self.assertNotEqual(cursor.fetchone()[0], previous_connection)
+            cursor.execute("SHOW VARIABLES LIKE 'transaction_isolation'")
+            row = cursor.fetchone()
+            if row is None:
+                cursor.execute("SHOW VARIABLES LIKE 'tx_isolation'")
+                row = cursor.fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row[1].replace("_", "-").upper(), "READ-COMMITTED")
 
     @override_settings(
         SESSION_ENGINE="django.contrib.sessions.backends.db",
@@ -391,6 +446,66 @@ class MysqlMatchViewerChecks(TransactionTestCase):
         self.assertIsNone(current["rounds"][1]["chart_id"])
         self.assertTrue(previous["history_valid"] and current["history_valid"])
 
+    @override_settings(MATCH_VIEWER_MYSQL_VERIFIED=True)
+    def test_reader_snapshots_keep_corrected_winners_and_removed_rounds_coherent(self):
+        self.select_first_chart()
+        self.match = record_round_winner(
+            self.match.pk, self.seeds[0].player_id,
+            expected_state=get_match_state_token(self.match),
+        )
+
+        def correct_winner():
+            with transaction.atomic():
+                self.match = undo_match_action(self.match.pk, expected_state=get_match_state_token(self.match))
+                self.match = record_round_winner(
+                    self.match.pk, self.seeds[1].player_id,
+                    expected_state=get_match_state_token(self.match),
+                )
+
+        previous, corrected = self.read_during_commit(correct_winner)
+        self.assertEqual(build_match_presentation(previous)["wins"], [1, 0])
+        self.assertEqual(build_match_presentation(corrected)["wins"], [0, 1])
+        self.assertEqual(len(previous["rounds"]), 2)
+        self.assertEqual(len(corrected["rounds"]), 2)
+        self.assertEqual(previous["rounds"][0]["round_id"], corrected["rounds"][0]["round_id"])
+        self.assertNotEqual(previous["rounds"][1]["round_id"], corrected["rounds"][1]["round_id"])
+
+        def remove_pending_round():
+            self.match = undo_match_action(self.match.pk, expected_state=get_match_state_token(self.match))
+
+        previous, removed = self.read_during_commit(remove_pending_round)
+        self.assertEqual(previous, corrected)
+        self.assertEqual(build_match_presentation(removed)["wins"], [0, 0])
+        self.assertEqual(len(removed["rounds"]), 1)
+        self.assertEqual(removed["rounds"][0]["round_id"], corrected["rounds"][0]["round_id"])
+        self.assertIsNone(removed["rounds"][0]["winner_id"])
+        self.assertEqual(removed["rounds"][0]["chart_id"], self.charts[4].pk)
+
+    @override_settings(MATCH_VIEWER_MYSQL_VERIFIED=True)
+    def test_reader_snapshot_keeps_player_reassignment_coherent(self):
+        replacement = TournamentPlayer.objects.create(
+            tournament=self.match.group.bracket.tournament, name="Replacement Player", is_active=True,
+            config=PlayerConfig(names_list=[CH_Name(ch_name="Replacement Player", is_primary=True)]),
+        )
+        replacement_seed = GroupSeed.objects.create(group=self.match.group, player=replacement, seed=3)
+
+        def reassign_player():
+            self.match = assign_match_players(
+                self.match.pk, [self.seeds[0].pk, replacement_seed.pk],
+                expected_state=get_match_state_token(self.match),
+            )
+
+        previous, reassigned = self.read_during_commit(reassign_player)
+        previous_viewer = build_match_presentation(previous)
+        current_viewer = build_match_presentation(reassigned)
+        self.assertEqual(previous_viewer["slots"], [str(seed.player_id) for seed in self.seeds])
+        self.assertEqual(current_viewer["slots"], [str(self.seeds[0].player_id), str(replacement.pk)])
+        self.assertEqual(current_viewer["players"][1]["name"], "Replacement Player")
+        self.assertEqual(current_viewer["state"], "opening_bans")
+        pinned_viewer = build_match_presentation(reassigned, previous_viewer["assignment"])
+        self.assertEqual(pinned_viewer["state"], "setup_changed")
+        self.assertIsNone(pinned_viewer["wins"])
+
     def test_two_actions_with_one_token_allow_exactly_one_commit(self):
         token = get_match_state_token(self.match)
         first_locked = threading.Event()
@@ -454,17 +569,78 @@ class MysqlMatchViewerChecks(TransactionTestCase):
             cursor.execute("SELECT CONNECTION_ID()")
             previous_connection = cursor.fetchone()[0]
         read_match_snapshot(self.staff.pk, self.match.pk)
-        self.assertIsNone(connection.connection)
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT CONNECTION_ID()")
-            self.assertNotEqual(cursor.fetchone()[0], previous_connection)
-            cursor.execute("SHOW VARIABLES LIKE 'transaction_isolation'")
-            row = cursor.fetchone()
-            if row is None:
-                cursor.execute("SHOW VARIABLES LIKE 'tx_isolation'")
-                row = cursor.fetchone()
-        self.assertIsNotNone(row)
-        self.assertEqual(row[1].replace("_", "-").upper(), "READ-COMMITTED")
+        self.assert_fresh_read_committed_connection(previous_connection)
+
+    @override_settings(MATCH_VIEWER_MYSQL_VERIFIED=True)
+    def test_reader_closes_connection_after_native_sql_and_body_failures(self):
+        for failure in ("transaction_setup", "query", "body"):
+            with self.subTest(failure=failure):
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT CONNECTION_ID()")
+                    previous_connection = cursor.fetchone()[0]
+
+                def fail_transaction_setup(execute, sql, params, many, context):
+                    if failure == "transaction_setup" and sql.startswith("SET TRANSACTION ISOLATION LEVEL"):
+                        return execute("SELECT * FROM corpo_viewer_missing_table", (), many, context)
+                    return execute(sql, params, many, context)
+
+                expected_error = RuntimeError if failure == "body" else DatabaseError
+                with self.assertRaises(expected_error), connection.execute_wrapper(fail_transaction_setup):
+                    with match_read_transaction():
+                        with connection.cursor() as cursor:
+                            cursor.execute("SELECT id FROM corpoch_match WHERE id = %s", [self.match.pk])
+                            self.assertEqual(cursor.fetchone()[0], self.match.pk)
+                            if failure == "query":
+                                cursor.execute("SELECT * FROM corpo_viewer_missing_table")
+                        raise RuntimeError("Controlled snapshot body failure.")
+                self.assert_fresh_read_committed_connection(previous_connection)
+                self.assertEqual(read_match_snapshot(self.staff.pk, self.match.pk)["match_id"], self.match.pk)
+
+    @override_settings(MATCH_VIEWER_MYSQL_VERIFIED=True)
+    def test_reader_rejects_existing_native_transactions_without_disrupting_them(self):
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT CONNECTION_ID()")
+                previous_connection = cursor.fetchone()[0]
+            with self.assertRaises(ViewerReadError):
+                read_match_snapshot(self.staff.pk, self.match.pk)
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT CONNECTION_ID()")
+                self.assertEqual(cursor.fetchone()[0], previous_connection)
+            self.assertTrue(connection.in_atomic_block)
+            self.assertFalse(connection.needs_rollback)
+
+        connection.set_autocommit(False)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT CONNECTION_ID()")
+                previous_connection = cursor.fetchone()[0]
+            with self.assertRaises(ViewerReadError):
+                read_match_snapshot(self.staff.pk, self.match.pk)
+            self.assertFalse(connection.get_autocommit())
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT CONNECTION_ID()")
+                self.assertEqual(cursor.fetchone()[0], previous_connection)
+        finally:
+            connection.rollback()
+            connection.set_autocommit(True)
+        self.assertEqual(read_match_snapshot(self.staff.pk, self.match.pk)["match_id"], self.match.pk)
+
+    @override_settings(MATCH_VIEWER_ENABLED=True, MATCH_VIEWER_MYSQL_VERIFIED=True)
+    def test_disabled_account_is_denied_with_a_previously_loaded_session_user(self):
+        self.select_first_chart()
+        request = RequestFactory().get("/match-viewer/local-check/state/")
+        request.user = self.staff
+        self.assertEqual(match_viewer_state(request, self.match.pk).status_code, 200)
+        DiscordUser.objects.filter(pk=self.staff.pk).update(is_active=False)
+        self.assertTrue(request.user.is_active)
+        response = match_viewer_state(request, self.match.pk)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotContains(response, "data-score-slot", status_code=403)
+        self.assertNotContains(response, self.seeds[0].player.ch_name, status_code=403)
+        DiscordUser.objects.filter(pk=self.staff.pk).update(is_active=True)
+        self.assertEqual(match_viewer_state(request, self.match.pk).status_code, 200)
 
     @override_settings(MATCH_VIEWER_ENABLED=True, MATCH_VIEWER_MYSQL_VERIFIED=True)
     def test_revocation_and_chart_privacy_are_rechecked_on_render(self):
