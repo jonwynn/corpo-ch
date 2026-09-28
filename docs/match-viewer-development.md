@@ -32,12 +32,14 @@ Fixture checks verify references, answer arithmetic and important distinctions: 
 
 The foundation runner was checked on Windows with CPython 3.14.7. Application dependency metadata was inspected without starting services. Installed versions include Django 6.0.8 and Celery 5.6.3; neither is exercised by the foundation suite. Other runtime combinations remain unverified.
 
-The 2026-09-28 milestone passed 36 tests: 26 fixture checks and 10 bootstrap checks, using 35 match cases and 14 later-stage scenario examples. Independent review found two incorrect fixture answers; both were corrected and covered by negative checks before the final passing run. Syntax inspection, documentation links and Git whitespace checks also passed.
+The initial 2026-09-28 milestone passed 36 tests: 26 fixture checks and 10 bootstrap checks, using 35 match cases and 14 later-stage scenario examples. Independent review found two incorrect fixture answers; both were corrected and covered by negative checks before the final passing run. Syntax inspection, documentation links and Git whitespace checks also passed.
+
+The CORP Cup rule checkpoint adds two numeric profiles, four opening sequences and eight tiebreaker examples in `tests/fixtures/corp_cup_rules.json`. Its eight additional integrity checks bring the guarded suite to **44 passing tests**, also confirmed by independent review. The corpus follows opening-only bans and keeps unresolved picker choices explicit. No production sporting-rule behavior was exercised.
 
 The repository has no configured project-wide formatter or linter command. The milestone uses the focused suite, syntax inspection and Git whitespace checks. Normal Django tests, migrations, MySQL transactions, OAuth, Discord, screenshots, exports and browser rendering remain later verification gates. The existing Python minimum-version declaration and missing Hydra initialization path need isolated application-runtime checks before deployment.
 
 ## Next development gate
 
-A referee must identify the first tournament's two-player, odd-best-of rule profile and confirm ordinary picker order, deferral, ban/save sequence and tiebreaker behavior. Existing chooser paths disagree for some settings, so fixture expectations cannot authorize changing official results or referee controls.
+CORP Cup defines group matches with 11 songs and a first-to-four target, and playoffs with 13 songs and a first-to-five target. Both use four opening ban/save actions and prohibit deferral. No bans occur after opening. Ordinary first-pick, later-pick and direct tiebreaker-pick order still needs referee confirmation. Current ban-save tiebreaker code expects an extra ban and does not match the clarified profile unchanged. Keep its configuration mapping unresolved until the direct chooser is settled; preserve other tournaments' behavior.
 
 After that confirmation, implement the minimum provenance fields and presentation layer with compatibility tests. Build the fixture layout against the same contract, then connect one match, add refresh/error handling, verify integration and prepare a limited staff rollout. Keep the existing overlay available throughout.

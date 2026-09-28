@@ -439,5 +439,201 @@ class MatchViewerContractTests(unittest.TestCase):
             self.validate_case(case)
 
 
+class CorpCupRulesContractTests(unittest.TestCase):
+    """Checks confirmed rule examples without importing sporting-rule code."""
+
+    def setUp(self):
+        """Loads the separate CORP corpus, retaining the generic visual cases."""
+        fixture_path = Path(__file__).parent / "fixtures" / "corp_cup_rules.json"
+        self.fixture_document = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.profiles = {
+            profile["profile_id"]: profile
+            for profile in self.fixture_document["profiles"]
+        }
+        self.sequences = {
+            sequence["sequence_id"]: sequence
+            for sequence in self.fixture_document["opening_sequences"]
+        }
+        self.cases = {
+            case["case_id"]: case
+            for case in self.fixture_document["tiebreaker_cases"]
+        }
+
+    def validate_tiebreaker_case(self, case):
+        """Checks arithmetic and references in a hand-authored tiebreaker answer.
+
+        :param dict case: source examples and independent expected answer"""
+        profile = self.profiles[case["profile_id"]]
+        opening = self.sequences[case["opening_sequence_id"]]["expected"]
+        expected = case["expected"]
+        participants = ["higher_seed", "lower_seed"]
+        played_charts = case["played_chart_ids"]
+        winners = case["recorded_winners"]
+        self.assertEqual(len(played_charts), profile["num_rounds"] - 1)
+        self.assertEqual(len(played_charts), len(set(played_charts)))
+        self.assertEqual(len(winners), len(played_charts))
+        self.assertTrue(set(winners).issubset(participants))
+        self.assertEqual(
+            expected["score"],
+            [winners.count(participant) for participant in participants],
+        )
+        self.assertEqual(expected["score"], [profile["target"] - 1] * 2)
+        self.assertTrue(set(played_charts).issubset(profile["setlist_chart_ids"]))
+        self.assertFalse(set(played_charts) & set(opening["effective_ban_chart_ids"]))
+        remaining = set(profile["setlist_chart_ids"]) - set(played_charts)
+        remaining -= set(opening["effective_ban_chart_ids"])
+        self.assertEqual(set(expected["raw_remaining_chart_ids"]), remaining)
+        self.assertEqual(expected["raw_remaining_count"], len(remaining))
+        self.assertEqual(
+            expected["raw_remaining_count"],
+            5 - opening["effective_ban_count"],
+        )
+        unplayed_saves = set(opening["saved_chart_ids"]) - set(played_charts)
+        self.assertEqual(set(expected["unplayed_saved_chart_ids"]), unplayed_saves)
+        self.assertNotIn("tiebreaker_ban_chart_id", case)
+        self.assertIsNone(expected["ban_actor"])
+        self.assertIsNone(expected["pick_actor"])
+        self.assertNotIn("eligible_ban_chart_ids", expected)
+        self.assertNotIn("raw_after_ban_chart_ids", expected)
+        if len(remaining) == 1:
+            self.assertEqual(expected["selection_kind"], "automatic")
+            self.assertIn(expected["forced_chart_id"], remaining)
+        else:
+            self.assertIsNone(expected["selection_kind"])
+            self.assertIsNone(expected["forced_chart_id"])
+        pickable = remaining - unplayed_saves if len(unplayed_saves) == 2 else remaining
+        self.assertEqual(set(expected["eligible_pick_chart_ids"]), pickable)
+
+    def test_numeric_profiles_and_proposed_action_quota(self):
+        self.assertEqual(set(self.profiles), {"group_stage", "playoffs"})
+        for profile_id, setlist_size, best_of, target in [
+            ("group_stage", 11, 7, 4),
+            ("playoffs", 13, 9, 5),
+        ]:
+            with self.subTest(profile_id=profile_id):
+                profile = self.profiles[profile_id]
+                self.assertEqual(profile["setlist_size"], setlist_size)
+                self.assertEqual(len(set(profile["setlist_chart_ids"])), setlist_size)
+                self.assertEqual(profile["num_players"], 2)
+                self.assertEqual(profile["num_rounds"], best_of)
+                self.assertEqual(profile["target"], target)
+                self.assertEqual(profile["target"], (best_of + 1) // 2)
+                self.assertEqual(profile["opening_action_count"], 4)
+                mapping = profile["proposed_model_mapping"]
+                self.assertEqual(mapping["num_bans"], 2)
+                self.assertEqual(
+                    profile["num_players"] * mapping["num_bans"],
+                    profile["opening_action_count"],
+                )
+                self.assertEqual(mapping["ban_ruleset"], "bansave")
+                self.assertIsNone(mapping["tb_ruleset"])
+                self.assertIsNone(mapping["pick_ruleset"])
+
+    def test_four_opening_action_sequences_and_effective_bans(self):
+        self.assertEqual(len(self.sequences), 4)
+        save_patterns = set()
+        for sequence in self.sequences.values():
+            with self.subTest(sequence_id=sequence["sequence_id"]):
+                actions = sequence["actions"]
+                expected = sequence["expected"]
+                self.assertEqual([action["num"] for action in actions], [0, 1, 2, 3])
+                self.assertEqual(
+                    [action["actor"] for action in actions],
+                    ["higher_seed", "lower_seed", "lower_seed", "higher_seed"],
+                )
+                self.assertFalse(actions[0]["saved"])
+                self.assertFalse(actions[2]["saved"])
+                save_patterns.add((actions[1]["saved"], actions[3]["saved"]))
+                banned_charts = set()
+                saved_charts = set()
+                for index, action in enumerate(actions):
+                    if action["saved"]:
+                        self.assertIn(index, {1, 3})
+                        previous = actions[index - 1]
+                        self.assertNotEqual(action["actor"], previous["actor"])
+                        self.assertEqual(action["chart_id"], previous["chart_id"])
+                        saved_charts.add(action["chart_id"])
+                    else:
+                        self.assertNotIn(action["chart_id"], banned_charts)
+                        self.assertNotIn(action["chart_id"], saved_charts)
+                        banned_charts.add(action["chart_id"])
+                self.assertEqual(set(expected["saved_chart_ids"]), saved_charts)
+                self.assertEqual(
+                    set(expected["effective_ban_chart_ids"]),
+                    banned_charts - saved_charts,
+                )
+                self.assertEqual(
+                    expected["effective_ban_count"],
+                    4 - 2 * len(saved_charts),
+                )
+        self.assertEqual(
+            save_patterns,
+            {(False, False), (False, True), (True, False), (True, True)},
+        )
+
+    def test_tiebreaker_case_integrity_and_coverage(self):
+        self.assertEqual(len(self.cases), len(self.fixture_document["tiebreaker_cases"]))
+        for case in self.cases.values():
+            with self.subTest(case_id=case["case_id"]):
+                self.validate_tiebreaker_case(case)
+        for profile_id in self.profiles:
+            self.assertEqual(
+                {
+                    case["expected"]["raw_remaining_count"]
+                    for case in self.cases.values()
+                    if case["profile_id"] == profile_id
+                },
+                {1, 3, 5},
+            )
+
+    def test_two_remaining_saves_are_excluded_from_direct_tiebreaker_choices(self):
+        for case_id in ["group_no_bans_two_saved", "playoffs_no_bans_two_saved"]:
+            with self.subTest(case_id=case_id):
+                expected = self.cases[case_id]["expected"]
+                self.assertEqual(expected["raw_remaining_count"], 5)
+                self.assertIsNone(expected["ban_actor"])
+                self.assertEqual(len(expected["eligible_pick_chart_ids"]), 3)
+                for saved_chart in expected["unplayed_saved_chart_ids"]:
+                    self.assertIn(saved_chart, expected["raw_remaining_chart_ids"])
+                    self.assertNotIn(saved_chart, expected["eligible_pick_chart_ids"])
+
+    def test_played_saves_do_not_count_as_remaining_saved_charts(self):
+        one_remaining = self.cases["group_no_bans_one_save_already_played"]["expected"]
+        none_remaining = self.cases["group_no_bans_both_saves_already_played"]["expected"]
+        self.assertEqual(one_remaining["unplayed_saved_chart_ids"], ["c"])
+        self.assertIn("c", one_remaining["eligible_pick_chart_ids"])
+        self.assertEqual(none_remaining["unplayed_saved_chart_ids"], [])
+        self.assertEqual(len(one_remaining["eligible_pick_chart_ids"]), 5)
+        self.assertEqual(len(none_remaining["eligible_pick_chart_ids"]), 5)
+
+    def test_partial_confirmation_does_not_guess_missing_sporting_rules(self):
+        confirmation = self.fixture_document["confirmation"]
+        self.assertEqual(confirmation["status"], "partially_confirmed")
+        self.assertFalse(confirmation["live_profile_approved"])
+        self.assertFalse(confirmation["implementation_verified"])
+        self.assertIsNone(confirmation["ordinary_first_picker"])
+        self.assertIsNone(confirmation["ordinary_later_picker"])
+        self.assertIsNone(confirmation["tied_song_score_resolution"])
+        self.assertFalse(confirmation["tiebreaker_extra_ban_allowed"])
+        self.assertIsNone(confirmation["tiebreaker_picker"])
+        self.assertFalse(confirmation["csc_reference_is_existing_csc_tiebreaker_mode"])
+        self.assertFalse(confirmation["defer_allowed"])
+        self.assertFalse(confirmation["opening_saved_chart_reban_allowed"])
+        self.assertFalse(confirmation["save_own_ban_allowed"])
+
+    def test_integrity_rejects_saved_charts_in_two_save_tiebreaker_choices(self):
+        case = copy.deepcopy(self.cases["group_no_bans_two_saved"])
+        case["expected"]["eligible_pick_chart_ids"] = ["a", "b", "c", "d", "k"]
+        with self.assertRaises(AssertionError):
+            self.validate_tiebreaker_case(case)
+
+    def test_integrity_rejects_adding_a_tiebreaker_ban(self):
+        case = copy.deepcopy(self.cases["group_two_bans_one_saved"])
+        case["tiebreaker_ban_chart_id"] = "b"
+        case["expected"]["ban_actor"] = "lower_seed"
+        with self.assertRaises(AssertionError):
+            self.validate_tiebreaker_case(case)
+
+
 if __name__ == "__main__":
     unittest.main()

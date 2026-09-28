@@ -1,0 +1,188 @@
+{
+    "contract_version": "1.0.0",
+    "scope": "Hand-authored CORP Cup rule examples. Numeric targets, opening actions and opening-only bans are confirmed. Ordinary picker order, tiebreaker picker and tied-song-score resolution need confirmation. Integrity checks do not validate production sporting-rule behavior.",
+    "confirmation": {
+        "status": "partially_confirmed",
+        "live_profile_approved": false,
+        "implementation_verified": false,
+        "ordinary_first_picker": null,
+        "ordinary_later_picker": null,
+        "tied_song_score_resolution": null,
+        "csc_reference_is_existing_csc_tiebreaker_mode": false,
+        "defer_allowed": false,
+        "opening_saved_chart_reban_allowed": false,
+        "tiebreaker_extra_ban_allowed": false,
+        "tiebreaker_picker": null,
+        "save_own_ban_allowed": false
+    },
+    "profiles": [
+        {
+            "profile_id": "group_stage",
+            "setlist_chart_ids": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"],
+            "setlist_size": 11,
+            "num_players": 2,
+            "num_rounds": 7,
+            "target": 4,
+            "opening_action_count": 4,
+            "proposed_model_mapping": {"num_bans": 2, "ban_ruleset": "bansave", "tb_ruleset": null, "pick_ruleset": null}
+        },
+        {
+            "profile_id": "playoffs",
+            "setlist_chart_ids": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"],
+            "setlist_size": 13,
+            "num_players": 2,
+            "num_rounds": 9,
+            "target": 5,
+            "opening_action_count": 4,
+            "proposed_model_mapping": {"num_bans": 2, "ban_ruleset": "bansave", "tb_ruleset": null, "pick_ruleset": null}
+        }
+    ],
+    "opening_sequences": [
+        {
+            "sequence_id": "four_bans",
+            "actions": [
+                {"num": 0, "actor": "higher_seed", "chart_id": "a", "saved": false},
+                {"num": 1, "actor": "lower_seed", "chart_id": "b", "saved": false},
+                {"num": 2, "actor": "lower_seed", "chart_id": "c", "saved": false},
+                {"num": 3, "actor": "higher_seed", "chart_id": "d", "saved": false}
+            ],
+            "expected": {"effective_ban_chart_ids": ["a", "b", "c", "d"], "saved_chart_ids": [], "effective_ban_count": 4}
+        },
+        {
+            "sequence_id": "save_first_ban",
+            "actions": [
+                {"num": 0, "actor": "higher_seed", "chart_id": "a", "saved": false},
+                {"num": 1, "actor": "lower_seed", "chart_id": "a", "saved": true},
+                {"num": 2, "actor": "lower_seed", "chart_id": "c", "saved": false},
+                {"num": 3, "actor": "higher_seed", "chart_id": "d", "saved": false}
+            ],
+            "expected": {"effective_ban_chart_ids": ["c", "d"], "saved_chart_ids": ["a"], "effective_ban_count": 2}
+        },
+        {
+            "sequence_id": "save_second_ban",
+            "actions": [
+                {"num": 0, "actor": "higher_seed", "chart_id": "a", "saved": false},
+                {"num": 1, "actor": "lower_seed", "chart_id": "b", "saved": false},
+                {"num": 2, "actor": "lower_seed", "chart_id": "c", "saved": false},
+                {"num": 3, "actor": "higher_seed", "chart_id": "c", "saved": true}
+            ],
+            "expected": {"effective_ban_chart_ids": ["a", "b"], "saved_chart_ids": ["c"], "effective_ban_count": 2}
+        },
+        {
+            "sequence_id": "save_both_bans",
+            "actions": [
+                {"num": 0, "actor": "higher_seed", "chart_id": "a", "saved": false},
+                {"num": 1, "actor": "lower_seed", "chart_id": "a", "saved": true},
+                {"num": 2, "actor": "lower_seed", "chart_id": "c", "saved": false},
+                {"num": 3, "actor": "higher_seed", "chart_id": "c", "saved": true}
+            ],
+            "expected": {"effective_ban_chart_ids": [], "saved_chart_ids": ["a", "c"], "effective_ban_count": 0}
+        }
+    ],
+    "tiebreaker_cases": [
+        {
+            "case_id": "group_four_bans",
+            "profile_id": "group_stage",
+            "opening_sequence_id": "four_bans",
+            "played_chart_ids": ["e", "f", "g", "h", "i", "j"],
+            "recorded_winners": ["higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed"],
+            "expected": {
+                "score": [3, 3], "raw_remaining_chart_ids": ["k"], "raw_remaining_count": 1,
+                "unplayed_saved_chart_ids": [],
+                "ban_actor": null, "pick_actor": null, "selection_kind": "automatic",
+                "eligible_pick_chart_ids": ["k"], "forced_chart_id": "k"
+            }
+        },
+        {
+            "case_id": "playoffs_four_bans",
+            "profile_id": "playoffs",
+            "opening_sequence_id": "four_bans",
+            "played_chart_ids": ["e", "f", "g", "h", "i", "j", "k", "l"],
+            "recorded_winners": ["lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed"],
+            "expected": {
+                "score": [4, 4], "raw_remaining_chart_ids": ["m"], "raw_remaining_count": 1,
+                "unplayed_saved_chart_ids": [],
+                "ban_actor": null, "pick_actor": null, "selection_kind": "automatic",
+                "eligible_pick_chart_ids": ["m"], "forced_chart_id": "m"
+            }
+        },
+        {
+            "case_id": "group_two_bans_one_saved",
+            "profile_id": "group_stage",
+            "opening_sequence_id": "save_first_ban",
+            "played_chart_ids": ["e", "f", "g", "h", "i", "j"],
+            "recorded_winners": ["higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed"],
+            "expected": {
+                "score": [3, 3], "raw_remaining_chart_ids": ["a", "b", "k"], "raw_remaining_count": 3,
+                "unplayed_saved_chart_ids": ["a"],
+                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "eligible_pick_chart_ids": ["a", "b", "k"], "forced_chart_id": null
+            }
+        },
+        {
+            "case_id": "playoffs_two_bans_one_saved",
+            "profile_id": "playoffs",
+            "opening_sequence_id": "save_first_ban",
+            "played_chart_ids": ["e", "f", "g", "h", "i", "j", "k", "l"],
+            "recorded_winners": ["lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed"],
+            "expected": {
+                "score": [4, 4], "raw_remaining_chart_ids": ["a", "b", "m"], "raw_remaining_count": 3,
+                "unplayed_saved_chart_ids": ["a"],
+                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "eligible_pick_chart_ids": ["a", "b", "m"], "forced_chart_id": null
+            }
+        },
+        {
+            "case_id": "group_no_bans_two_saved",
+            "profile_id": "group_stage",
+            "opening_sequence_id": "save_both_bans",
+            "played_chart_ids": ["e", "f", "g", "h", "i", "j"],
+            "recorded_winners": ["higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed"],
+            "expected": {
+                "score": [3, 3], "raw_remaining_chart_ids": ["a", "b", "c", "d", "k"], "raw_remaining_count": 5,
+                "unplayed_saved_chart_ids": ["a", "c"],
+                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "eligible_pick_chart_ids": ["b", "d", "k"], "forced_chart_id": null
+            }
+        },
+        {
+            "case_id": "playoffs_no_bans_two_saved",
+            "profile_id": "playoffs",
+            "opening_sequence_id": "save_both_bans",
+            "played_chart_ids": ["e", "f", "g", "h", "i", "j", "k", "l"],
+            "recorded_winners": ["lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed"],
+            "expected": {
+                "score": [4, 4], "raw_remaining_chart_ids": ["a", "b", "c", "d", "m"], "raw_remaining_count": 5,
+                "unplayed_saved_chart_ids": ["a", "c"],
+                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "eligible_pick_chart_ids": ["b", "d", "m"], "forced_chart_id": null
+            }
+        },
+        {
+            "case_id": "group_no_bans_one_save_already_played",
+            "profile_id": "group_stage",
+            "opening_sequence_id": "save_both_bans",
+            "played_chart_ids": ["a", "e", "f", "g", "h", "i"],
+            "recorded_winners": ["higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed"],
+            "expected": {
+                "score": [3, 3], "raw_remaining_chart_ids": ["b", "c", "d", "j", "k"], "raw_remaining_count": 5,
+                "unplayed_saved_chart_ids": ["c"],
+                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "eligible_pick_chart_ids": ["b", "c", "d", "j", "k"], "forced_chart_id": null
+            }
+        },
+        {
+            "case_id": "group_no_bans_both_saves_already_played",
+            "profile_id": "group_stage",
+            "opening_sequence_id": "save_both_bans",
+            "played_chart_ids": ["a", "c", "e", "f", "g", "h"],
+            "recorded_winners": ["lower_seed", "higher_seed", "lower_seed", "higher_seed", "lower_seed", "higher_seed"],
+            "expected": {
+                "score": [3, 3], "raw_remaining_chart_ids": ["b", "d", "i", "j", "k"], "raw_remaining_count": 5,
+                "unplayed_saved_chart_ids": [],
+                "ban_actor": null, "pick_actor": null, "selection_kind": null,
+                "eligible_pick_chart_ids": ["b", "d", "i", "j", "k"], "forced_chart_id": null
+            }
+        }
+    ]
+}

@@ -13,7 +13,7 @@ This fork is preparing a read-only live match viewer for tournament staff on the
 - [Foundation tests and validation limits](docs/match-viewer-development.md)
 - [Changelog](CHANGELOG.md)
 
-The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. Production rule changes require confirmation of the first tournament's rule profile.
+The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. CORP Cup opening-only ban/save rules and tiebreaker candidates are documented; ordinary and direct tiebreaker song-pick order still need confirmation before production chooser changes.
 
 ## Links
 
