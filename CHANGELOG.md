@@ -34,6 +34,7 @@
 
 ### Changed
 
+- Added restart navigation and existing-destination recovery guidance to the local runtime guide. Returning users start the saved MySQL/website processes and DEV session without rerunning one-time database provisioning.
 - Recorded successful manual use of the restricted DEV Discord pilot, including target completion, finalization and reopening/undo. Updated the current guides to distinguish verified local behavior from pending accessibility, deployment and full bot/provider checks.
 - Fixed local staging pages hanging behind an idle browser connection. The local server now handles connections concurrently with Django's per-thread database cleanup and closes inactive sockets after ten seconds. Supervisor's `RUNNING` state indicates process health; it does not by itself confirm that HTTP requests are responding.
 - Application consumers now use the selected Django settings instead of importing the deployment settings directly. Production profile synchronization remains enabled by default; the local login checkpoint explicitly disables its background task.

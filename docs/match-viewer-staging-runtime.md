@@ -8,6 +8,8 @@ The bot connects directly to Redis in `CorpoDbot.__init__`, and Celery handles b
 
 Steps 1–3 prepare Ubuntu. Steps 4–6 operate an instance that a maintainer has already prepared and checked; they do not provision a fresh clone. The final section describes that preparation. WSL installation may need administrator approval, a Windows restart and interactive Linux account creation. A successful local startup does not establish that browser consent and callback handling work; complete the login check separately.
 
+**Returning to an existing setup:** open and keep the Ubuntu window running using [step 4](#4-check-the-prepared-local-instance), then start the saved database and website using [step 5](#5-start-the-website-and-test-login). To resume Discord controls, use the [DEV session launch command](match-viewer-discord-pilot.md#3-start-the-dev-session) in a third PowerShell window. Stopping these processes preserves the database, credentials and sample match. Do not repeat installation, provisioning or sample preparation just to restart them.
+
 ## 1. Install Ubuntu on WSL
 
 Use the same Windows account that owns the repository and prepared private credentials. Save open work before starting. Open the Start menu, type **Windows PowerShell**, right-click it and choose **Run as administrator**. Approve the Windows prompt.
@@ -223,6 +225,8 @@ The prepared-PC commands above assume this work is complete. They cannot prepare
 6. Start only `corpo-dev:web-dev`; verify local HTTP behavior and that all viewer gates remain off. Then complete the human browser-login check in step 5. Automated tests and status output do not replace that check.
 
 For the one-time MySQL provisioner, use **normal Windows PowerShell** only after dependency and parent-directory preparation. Estimated duration: **15–120 seconds**; no GPU. This creates a fresh local database; it is not an everyday start command.
+
+If this command reports `The destination already exists; provisioning never reuses or removes it.`, it stopped before writing or starting MySQL. For a previously working setup, leave the existing folder in place and return to [steps 4–5](#4-check-the-prepared-local-instance). Do not delete or rename the database directory, replace credentials or choose a new destination to bypass this check. If the first setup never completed, retain the files and report the error for inspection instead of assuming the instance is ready.
 
 ```powershell
 & {
