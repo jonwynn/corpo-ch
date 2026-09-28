@@ -57,7 +57,8 @@ TB_RULESETS = (
 	("csc", "CSC TB Rules"),
 	("banpick", "'NPDO' Ban/Pick"),
 	('refdecide', "Ref picks from unplayed"),
-	('bansave', "Ban-Save")
+	('bansave', "Ban-Save"),
+	('corp_cup', "CORP Cup: opening bans only, loser picks")
 )
 
 PICK_RULESETS = (

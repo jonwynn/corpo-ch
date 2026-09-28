@@ -189,3 +189,66 @@ def build_corp_cup_selection(
             if player_id != recorded_winner_ids[-1]
         )
     return CorpCupSelection(picker_id, remaining_ids, None, is_tiebreaker, False)
+
+
+def validate_corp_cup_history(
+    player_ids, chart_ids, actions, action_phases, rounds, num_rounds,
+):
+    """Validates surviving provenance and round history for readers and writers.
+
+    :param tuple player_ids: Higher-seeded and lower-seeded participant IDs
+    :param tuple chart_ids: Distinct available setlist IDs
+    :param tuple actions: Ordered OpeningAction records
+    :param tuple action_phases: Recorded phase for each action
+    :param tuple rounds: Ordered primitive round dictionaries
+    :param int num_rounds: Maximum songs in the match
+    :return: Current selection decision, or None during opening actions"""
+    if len(action_phases) != len(actions) or any(phase != "opening" for phase in action_phases):
+        raise ValueError("Unverified or non-opening ban history requires staff review.")
+    validate_opening_actions(player_ids, chart_ids, actions)
+    if len(actions) != 4:
+        if rounds:
+            raise ValueError("Rounds cannot precede completion of the opening actions.")
+        return None
+    played_ids = ()
+    winners = ()
+    selection = build_corp_cup_selection(
+        player_ids, chart_ids, actions, played_ids, winners, num_rounds,
+    )
+    for index, round_record in enumerate(rounds):
+        if round_record.get("num") != index + 1 or selection.complete:
+            raise ValueError("Round history is out of order or follows a decisive result.")
+        if round_record.get("chart_id") is None:
+            if (
+                index != len(rounds) - 1 or round_record.get("winner_id") is not None
+                or round_record.get("loser_id") is not None
+                or selection.forced_chart_id is not None
+                or round_record.get("selection_kind") != "unknown"
+                or round_record.get("picked_id") not in (None, selection.next_picker_id)
+            ):
+                raise ValueError("An unselected round has inconsistent result or provenance.")
+            break
+        if round_record["chart_id"] not in selection.eligible_chart_ids:
+            raise ValueError("A selected chart is not eligible in this round.")
+        expected_kind = "automatic" if selection.forced_chart_id else "player"
+        if (
+            round_record.get("selection_kind") != expected_kind
+            or round_record.get("picked_id") != selection.next_picker_id
+        ):
+            raise ValueError("Round selection ownership requires staff review.")
+        if round_record.get("winner_id") is None:
+            if index != len(rounds) - 1 or round_record.get("loser_id") is not None:
+                raise ValueError("An earlier round is still awaiting a result.")
+            break
+        if (
+            round_record["winner_id"] not in player_ids
+            or round_record.get("loser_id") not in player_ids
+            or round_record["winner_id"] == round_record["loser_id"]
+        ):
+            raise ValueError("A recorded result must identify both match participants.")
+        played_ids += (round_record["chart_id"],)
+        winners += (round_record["winner_id"],)
+        selection = build_corp_cup_selection(
+            player_ids, chart_ids, actions, played_ids, winners, num_rounds,
+        )
+    return selection

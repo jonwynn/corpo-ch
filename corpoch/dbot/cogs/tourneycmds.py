@@ -1,13 +1,13 @@
-import discord, uuid
+import discord
+from asgiref.sync import sync_to_async
 from discord.ext import commands
-from discord.ui import *
-from discord.enums import ComponentType, InputTextStyle
+from django.db import transaction
 
 from corpoch import settings
-from corpoch.models import Tournament, Chart, Match, MatchRound, Bracket, Group, GroupSeed, TournamentPlayer, MatchRound, MatchBan, DiscordUser
-from corpoch.dbot.models import CHEmoji, Channels
+from corpoch.match_actions import MatchActionError, get_match_state_token, load_corp_context
+from corpoch.match_publication import finish_match_evidence
+from corpoch.models import Bracket, Match, Tournament
 from corpoch.dbot.view.reftool import DiscordMatchView
-from corpoch.types import TB_RULESETS, PICK_RULESETS, BAN_RULESETS, CHART_CATEGORIES
 
 class DiscordMatch():
 	def __init__(self, bot, message=None, uuid=None, exhibition=False):
@@ -24,6 +24,7 @@ class DiscordMatch():
 		self.exhibition = exhibition
 		self.confirm_cancel = False
 		self.player_input = False
+		self.render_state = None
 
 	async def init(self) -> bool:
 		if self.matchDb:
@@ -60,8 +61,12 @@ class DiscordMatch():
 
 	async def finishMatch(self, interaction):
 		print(f"Finishing match {self.matchDb.id}")
-		self.matchDb.finished = True
-		await self.matchDb.asave()
+		try:
+			self.matchDb = await sync_to_async(finish_match_evidence)(self.matchDb.pk)
+		except (ValueError, Match.DoesNotExist) as error:
+			await self.send_action_notice(interaction, str(error))
+			await self.showTool(interaction)
+			return
 		embeds = [await self.genMatchEmbed()]
 		shared_url = f"https://{settings.BASE_URL}/gallery/"
 		async for rnd in self.matchDb.rounds.select_related():
@@ -69,7 +74,42 @@ class DiscordMatch():
 			embed.set_image(url=f"https://{settings.BASE_URL}{settings.MEDIA_URL}{rnd.screenshot}")
 			embeds.append(embed)
 		await interaction.edit(embeds=embeds[:10], view=None)
-		self.bot.matches.pop(self.matchDb.id)
+		self.bot.matches.pop(self.matchDb.id, None)
+
+	async def send_action_notice(self, interaction, message):
+		"""Reports a rejected or outdated interaction without changing results."""
+		if interaction.response.is_done():
+			await interaction.followup.send(message, ephemeral=True, delete_after=10)
+		else:
+			await interaction.response.send_message(message, ephemeral=True, delete_after=10)
+
+	async def apply_match_action(self, interaction, action, *args, **kwargs):
+		"""Publishes one validated transition, then redraws from the saved match."""
+		accepted = True
+		try:
+			self.matchDb = await sync_to_async(action)(*args, **kwargs)
+		except ValueError as error:
+			accepted = False
+			await self.send_action_notice(interaction, str(error))
+		except Match.DoesNotExist:
+			await self.send_action_notice(interaction, "This match no longer exists.")
+			await interaction.edit_original_response(content="Match no longer available.", embeds=[], view=None)
+			return False
+		await self.showTool(interaction)
+		return accepted
+
+	async def clear_missing_match(self, interaction, is_message=False, is_context=False):
+		"""Removes controls for a match deleted by another supported action."""
+		if self.matchDb:
+			self.bot.matches.pop(self.matchDb.pk, None)
+		self.matchDb = None
+		content = {"content": "Match no longer available.", "embeds": [], "view": None}
+		if is_message:
+			await interaction.edit(**content)
+		elif is_context:
+			await interaction.interaction.edit_original_response(**content)
+		else:
+			await interaction.edit_original_response(**content)
 
 	async def showTool(self, interaction=None):
 		files = []
@@ -87,16 +127,36 @@ class DiscordMatch():
 				if not interaction.response.is_done():
 					await interaction.response.defer()
 				self.msg = interaction.message
-			self.save_match()
+			try:
+				await sync_to_async(self.save_match)()
+			except Match.DoesNotExist:
+				await self.clear_missing_match(interaction, is_message, is_ctx)
+				return
 		else:
 			interaction = self.msg #Live reload
 			is_message = True
-			self.load_match()
+			try:
+				await sync_to_async(self.load_match)()
+			except Match.DoesNotExist:
+				await self.clear_missing_match(interaction, is_message=True)
+				return
 		
-		view = DiscordMatchView(self)
+		self.render_state = await sync_to_async(get_match_state_token)(self.matchDb) if self.matchDb else None
+		recovery_error, recovery_allowed = await sync_to_async(self.load_recovery_status)()
+		view = DiscordMatchView(self, recovery_error=recovery_error, recovery_allowed=recovery_allowed)
 		await view.init()
-		embeds = [await self.genMatchEmbed()]
-		if self.matchDb and self.complete:
+		if recovery_error:
+			embed = discord.Embed(title="Match history needs staff review", description=recovery_error)
+			if recovery_allowed:
+				instruction = "Reopen the recorded result first." if self.complete else "Remove the last recorded action to discard invalid history. Earlier records are preserved."
+			else:
+				instruction = "Correct the match configuration or player assignments in the administration page."
+			embed.add_field(name="Recovery", value=instruction, inline=False)
+			embed.set_footer(text=f"Match ID: {self.matchDb.pk}")
+			embeds = [embed]
+		else:
+			embeds = [await self.genMatchEmbed()]
+		if self.matchDb and self.complete and not recovery_error:
 			embeds.append(await self.genScreenEmbed())
 			for issue in self.screen_review:
 				embeds.append(issue.embed)
@@ -109,6 +169,20 @@ class DiscordMatch():
 			await interaction.interaction.edit_original_response(embeds=embeds, content=None, view=view, files=files, attachments=[])
 		else:
 			await interaction.edit_original_response(embeds=embeds, content=None, view=view, files=files, attachments=[])
+
+	def load_recovery_status(self):
+		"""Keeps staff correction controls available when strict history is invalid."""
+		if not self.is_corp_cup or self.matchDb.players.count() != 2:
+			return None, False
+		try:
+			load_corp_context(self.matchDb)
+		except MatchActionError as error:
+			try:
+				context = load_corp_context(self.matchDb, validate_history=False)
+			except MatchActionError:
+				return str(error), False
+			return str(error), bool(context.rounds or context.actions or self.complete)
+		return None, False
 
 	def load_match(self):
 		if isinstance(self.matchDb, str):
@@ -123,16 +197,31 @@ class DiscordMatch():
 
 	def save_match(self):
 		if self.group:
+			metadata = {
+				"message": self.msg.id if self.msg else None,
+				"channel_id": self.channel.id if self.channel else None,
+				"referee_id": self.referee.id if self.referee else None,
+			}
+			with transaction.atomic():
+				if self.matchDb._state.adding:
+					for field, value in metadata.items():
+						setattr(self.matchDb, field, value)
+					self.matchDb.save(force_insert=True)
+				else:
+					current = Match.objects.select_for_update().get(pk=self.matchDb.pk)
+					missing = {
+						field: value for field, value in metadata.items()
+						if getattr(current, field) is None and value is not None
+					}
+					if missing:
+						Match.objects.filter(pk=current.pk).update(**missing)
+			self.matchDb = Match.objects.select_related("group__bracket__ruleset").get(pk=self.matchDb.pk)
+			self.bracket = self.matchDb.group.bracket
 			self.bot.matches[self.matchDb.id] = self
-			self.matchDb.group = self.group
-			self.matchDb.message = self.msg.id if self.msg else None
-			self.matchDb.channel = Channels.objects.get(id=self.channel.id)
-			self.matchDb.referee = DiscordUser.objects.get(id=self.referee.id)
-			for ban in self.bans:
-				ban.save()
-			for rnd in self.rounds:
-				rnd.save()
-			self.matchDb.save()
+
+	@property
+	def is_corp_cup(self):
+		return bool(self.matchDb and self.matchDb.is_corp_cup)
 
 	def add_ban(self, player, chart):
 		self.matchDb.add_ban(player, chart)
@@ -211,7 +300,7 @@ class DiscordMatch():
 		return outStr
 
 	def format_bans_player(self, seed, bans):
-		outStr = f"**{seed.player_ch_name} Bans{"/Saves" if self.ruleset.tb_ruleset == "bansave" else ""}**\n"
+		outStr = f"**{seed.player_ch_name} Bans{"/Saves" if self.ruleset.ban_ruleset == "bansave" else ""}**\n"
 		for i in range(0, self.ruleset.num_bans):
 			try:
 				outStr += f"{bans[i].num + 1} - {bans[i].chart.tournament_name}{" - SAVED" if bans[i].saved else ""}\n"
@@ -343,7 +432,7 @@ class DiscordMatch():
 			embed.add_field(name="Score", value=self.score_str, inline=False)
 			if self.defer:
 				embed.add_field(name="Deferral", value=f"{self.matchDb.high_seed.player.ch_name} has deferred.")
-			if len(self.bans) < self.ruleset.num_bans:
+			if len(self.bans) < self.ruleset.total_bans:
 				embed.add_field(name="Bans", value=f"{self.formatted_bans}\nSelect next ban", inline=False)
 			elif self.ruleset.tb_ruleset == 'banpick' and len(self.rounds) == self.ruleset.num_rounds:
 				if len(self.bans) < self.ruleset.total_bans + 1:

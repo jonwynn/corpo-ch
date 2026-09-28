@@ -10,6 +10,7 @@ from corpoch.match_rules import (
     build_corp_cup_selection,
     opening_actor,
     opening_choices,
+    validate_corp_cup_history,
     validate_corp_cup_profile,
     validate_opening_actions,
 )
@@ -227,3 +228,29 @@ class CorpCupRulesTests(unittest.TestCase):
                 self.player_ids, self.chart_ids, self.build_actions("four_bans")[:3],
                 (), (), 7,
             )
+
+    def test_forced_tiebreaker_cannot_be_a_blank_pending_round(self):
+        actions = self.build_actions("four_bans")
+        records = []
+        picker = self.player_ids[0]
+        for index, winner in enumerate(self.player_ids * 3):
+            loser = next(player for player in self.player_ids if player != winner)
+            records.append({
+                "num": index + 1, "chart_id": self.chart_ids[index + 4],
+                "picked_id": picker, "winner_id": winner, "loser_id": loser,
+                "selection_kind": "player",
+            })
+            picker = loser
+        records.append({
+            "num": 7, "chart_id": None, "picked_id": None,
+            "winner_id": None, "loser_id": None, "selection_kind": "unknown",
+        })
+        with self.assertRaises(ValueError):
+            validate_corp_cup_history(
+                self.player_ids, self.chart_ids, actions, ("opening",) * 4, records, 7,
+            )
+        records[-1].update(chart_id=self.chart_ids[-1], selection_kind="automatic")
+        selection = validate_corp_cup_history(
+            self.player_ids, self.chart_ids, actions, ("opening",) * 4, records, 7,
+        )
+        self.assertEqual(selection.forced_chart_id, self.chart_ids[-1])

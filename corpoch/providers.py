@@ -11,7 +11,6 @@ from corpoch import __user_agent__
 from corpoch import settings
 from corpoch.models import GSheetAPI, Chart, Tournament, Match, Qualifier, QualifierSubmission, TournamentPlayer
 from corpoch.types import StegScreenshot, SearchResponse, CH_DIFFICULTIES, CH_INSTRUMENTS, CH_VERSIONS
-from corpoch.utils.hydra.hydra.hyutil import analyze_chart_bytes_chart, analyze_chart_bytes_mid
 from corpoch.utils.snghandler import SNGHandler
 from corpoch.dbot.view.helpers import build_stats_embed, build_full_stats_embed
 
@@ -167,6 +166,12 @@ class Hydra:
 		self._encore = EncoreClient()
 
 	def gen_path(self, chart: Union[dict, Chart]):
+		try:
+			from corpoch.utils.hydra.hydra.hyutil import analyze_chart_bytes_chart, analyze_chart_bytes_mid
+		except ModuleNotFoundError as error:
+			if error.name and error.name.startswith("corpoch.utils.hydra"):
+				raise RuntimeError("Hydra chart analysis is unavailable. Initialize the Hydra submodule before using it.") from error
+			raise
 		if isinstance(chart, Chart):
 			content = self._encore.download_from_url(chart.url)
 		elif isinstance(chart, dict):

@@ -14,6 +14,10 @@ class BlockedTestOperation(RuntimeError):
     """Reports an operation outside the isolated test boundary."""
 
 
+class BlockedTestImport(BlockedTestOperation, ImportError):
+    """Allows optional dependency probes to recognize an unavailable import."""
+
+
 class ViewerImportGuard(importlib.abc.MetaPathFinder):
     """Blocks service clients and requires explicit opt-in for application models."""
 
@@ -45,7 +49,7 @@ class ViewerImportGuard(importlib.abc.MetaPathFinder):
             fullname == name or fullname.startswith(f"{name}.")
             for name in self.blocked_modules
         ):
-            raise BlockedTestOperation(f"Blocked application/service import: {fullname}")
+            raise BlockedTestImport(f"Blocked application/service import: {fullname}")
         return None
 
 

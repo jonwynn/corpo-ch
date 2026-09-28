@@ -158,7 +158,7 @@ class MatchRoundSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = corpomodels.MatchRound
-		fields = '__all__'
+		fields = ["id", "num", "steg", "screenshot", "created", "chart", "match", "picked", "winner", "loser"]
 
 	def to_representation(self, instance):
 		ret = super().to_representation(instance)
@@ -187,7 +187,11 @@ class MatchSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = corpomodels.Match
-		fields = '__all__'
+		fields = [
+			"id", "players", "match_rounds", "match_bans", "group", "winner", "loser", "referee",
+			"defer", "started_on", "ended_on", "complete", "finished", "submitted",
+			"channel", "message", "exhibition", "rev_seeds",
+		]
 
 	def to_representation(self, instance):
 		ret = super().to_representation(instance)

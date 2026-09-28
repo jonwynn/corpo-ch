@@ -33,11 +33,13 @@ def upload_completed_match_gsheet():
 	print(f"GSHEETS: Running gsheets upload for completed matches")
 	for match in matches:
 		if len(match.players.all()) > 0 and match.tournament.config.gsheet:
+			from corpoch.match_actions import get_match_state_token
+			from corpoch.match_publication import publish_export_status
+			expected_state = get_match_state_token(match)
 			print(f"GSHEETS: Uploading completed match {match.id} to tourney config sheet")
 			sheet.set_submission(match)
 			sheet.submit_completed()
-			match.submitted = True
-			match.save()
+			publish_export_status(match.pk, expected_state=expected_state)
 	close_old_connections()
 
 @app.task

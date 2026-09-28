@@ -38,6 +38,11 @@ class MatchAbstract(models.Model):
 		abstract = True
 
 	@property
+	def is_corp_cup(self):
+		"""Reports whether this official match explicitly selects CORP Cup rules."""
+		return isinstance(self, Match) and self.ruleset.tb_ruleset == "corp_cup"
+
+	@property
 	def ongoing(self):
 		players = self.players.all()
 		return self.finished == False and players.count() > 1
@@ -86,14 +91,14 @@ class MatchAbstract(models.Model):
 	@property
 	def high_seed_bans(self):
 		if self.high_seed:
-			return [ban for ban in self.bans if ban.player.id == self.high_seed.player_id]
+			return [ban for ban in self.bans if ban.player_id == self.high_seed.player_id]
 		else:
 			return []
 
 	@property
 	def low_seed_bans(self):
 		if self.low_seed:
-			return [ban for ban in self.bans if ban.player.id == self.low_seed.player_id]
+			return [ban for ban in self.bans if ban.player_id == self.low_seed.player_id]
 		else:
 			return []
 
@@ -139,7 +144,7 @@ class MatchAbstract(models.Model):
 				if round.winner_id:
 					if round.winner_id == self.high_seed.player_id:
 						score1 += 1
-					else:
+					elif round.winner_id == self.low_seed.player_id:
 						score2 += 1
 
 			if asint:
@@ -195,6 +200,10 @@ class MatchAbstract(models.Model):
 		"""
 		Returns the player that's currently "up" to select the next step in the match
 		"""
+		if self.is_corp_cup:
+			from corpoch.match_actions import corp_picker_id
+			player_id = corp_picker_id(self)
+			return TournamentPlayer.objects.using(self._state.db or "default").get(pk=player_id) if player_id is not None else None
 		if self.rounds.count() == 0 and self.bans.count() != self.ruleset.total_bans:
 			if self.ruleset.ban_ruleset == "bansave":
 				if self.bans.count() == 0 or self.bans.count() == 3:
@@ -289,6 +298,9 @@ class MatchAbstract(models.Model):
 		"""
 		Returns the rest of the setlist that hasn't been played for the match
 		"""
+		if self.is_corp_cup:
+			from corpoch.match_actions import corp_chart_choices
+			return self.setlist.filter(pk__in=corp_chart_choices(self)).select_related("icon")
 		#Ensure saves can't be "rebanned" in ban-phase of a match, otherwise keep "saved" songs available
 		if self.ruleset.ban_ruleset == "bansave" and (not self.tiebreaker or self.bans.count() > self.ruleset.total_bans):
 			bans = self.effective_bans.values_list("chart", flat=True)
@@ -312,6 +324,14 @@ class MatchAbstract(models.Model):
 		return charts
 
 	def add_ban(self, player: TournamentPlayer, chart: Chart):
+		if self.is_corp_cup:
+			from corpoch.match_actions import get_match_state_token, record_opening_action
+			record_opening_action(
+				self.pk, player.pk, chart.pk,
+				expected_state=get_match_state_token(self), using=self._state.db or "default",
+			)
+			self.refresh_from_db()
+			return self.match_bans.latest("num")
 		newBan = MatchBan(num=len(self.bans), player=player, chart=chart, match=self)
 		newBan.save()
 		if self.bans.count() == self.ruleset.total_bans or self.tiebreaker:
@@ -320,11 +340,28 @@ class MatchAbstract(models.Model):
 		return newBan
 
 	def add_save(self, player: TournamentPlayer, chart: Chart):
+		if self.is_corp_cup:
+			from corpoch.match_actions import get_match_state_token, record_opening_action
+			record_opening_action(
+				self.pk, player.pk, chart.pk, saved=True,
+				expected_state=get_match_state_token(self), using=self._state.db or "default",
+			)
+			self.refresh_from_db()
+			return
 		ban = self.add_ban(player, chart)
 		ban.saved = True
 		ban.save()
 
 	def add_round(self):
+		if self.is_corp_cup:
+			from corpoch.match_actions import (
+				advance_match_revision, create_pending_round, load_corp_context, locked_match,
+			)
+			with locked_match(self.pk, using=self._state.db or "default") as current:
+				if create_pending_round(load_corp_context(current), self._state.db or "default"):
+					advance_match_revision(current, self._state.db or "default")
+			self.refresh_from_db()
+			return
 		chart = None
 		if len(self.rounds) == 0:
 			if self.defer and self.ruleset.ban_ruleset == "deferboth":
@@ -388,15 +425,22 @@ class MatchAbstract(models.Model):
 		pass
 
 	def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-		for rnd in self.rounds:
-			if rnd.screenshot and (not rnd.steg or len(rnd.steg.players) == 0):
-				from corpoch.providers import CHStegTool
-				tool = CHStegTool()
-				rnd.steg = tool.getStegInfoSync(rnd.screenshot)
-
-		super().save()
+		if update_fields is None and not self._state.adding:
+			for rnd in self.rounds:
+				if rnd.screenshot and (not rnd.steg or len(rnd.steg.players) == 0):
+					from corpoch.providers import CHStegTool
+					tool = CHStegTool()
+					rnd.steg = tool.getStegInfoSync(rnd.screenshot)
+		super().save(
+			force_insert=force_insert, force_update=force_update,
+			using=using, update_fields=update_fields,
+		)
 
 class Match(MatchAbstract):
+	action_revision = models.PositiveBigIntegerField(
+		default=0, editable=False,
+		help_text="Invalidates delayed sporting actions after any match correction.",
+	)
 	tournament = models.ForeignKey("Tournament", related_name="matches", verbose_name="Tournament", on_delete=models.CASCADE, help_text="Tournament")
 	players = models.ManyToManyField("GroupSeed", related_name="match_players", verbose_name="Players", blank=True, help_text="Players that participated in a match.")
 	loser = models.ForeignKey("TournamentPlayer", related_name="matches_lost", null=True, blank=True, on_delete=models.SET_NULL, help_text="Player that lost the match.")
@@ -459,11 +503,14 @@ class MatchRoundAbstract(models.Model):
 		return outStr
 
 	def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-		if self.screenshot and not self.steg:
+		if update_fields is None and self.screenshot and not self.steg:
 			from corpoch.providers import CHStegTool
 			tool = CHStegTool()
 			self.steg = tool.getStegInfoSync(self.screenshot)
-		super().save()
+		super().save(
+			force_insert=force_insert, force_update=force_update,
+			using=using, update_fields=update_fields,
+		)
 
 	@property
 	def is_tiebreaker(self) -> bool:
@@ -487,6 +534,11 @@ class MatchRoundAbstract(models.Model):
 		return embed
 
 class MatchRound(MatchRoundAbstract):
+	selection_kind = models.CharField(
+		max_length=16, default="unknown",
+		choices=[("unknown", "Unknown"), ("player", "Player"), ("referee", "Referee"), ("automatic", "Automatic")],
+		help_text="Verified origin of the surviving chart selection.",
+	)
 	match = models.ForeignKey(Match, related_name="match_rounds", verbose_name="Match ID", on_delete=models.CASCADE, null=True, blank=True, help_text="Match the round was played for.")
 	picked = models.ForeignKey("TournamentPlayer", related_name="picks", verbose_name="Picker", on_delete=models.CASCADE, blank=True, null=True, help_text="Player that picked the chart played.")
 	winner = models.ForeignKey("TournamentPlayer", related_name="rounds_won", verbose_name="Winner", null=True, blank=True, on_delete=models.SET_NULL, help_text="Winner of a round.")
@@ -533,6 +585,11 @@ class MatchBanAbstract(models.Model):
 		return str(self.player.ch_name)
 
 class MatchBan(MatchBanAbstract):
+	action_phase = models.CharField(
+		max_length=16, default="unknown",
+		choices=[("unknown", "Unknown"), ("opening", "Opening"), ("tiebreaker", "Tiebreaker")],
+		help_text="Verified phase of the surviving ban or save.",
+	)
 	match = models.ForeignKey(Match, related_name="match_bans", verbose_name="Match ID", on_delete=models.CASCADE, null=True, blank=True, help_text="Match the round was played for.")
 	player = models.ForeignKey("TournamentPlayer", related_name="player_bans", verbose_name="Player", null=True, blank=True, on_delete=models.SET_NULL, help_text="Player that chose a ban.")
 

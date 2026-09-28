@@ -117,6 +117,21 @@ class BracketRules(models.Model):
 	def wins_needed(self):
 		return int(math.ceil(self.num_rounds / 2))
 
+	def clean(self):
+		"""Validates the explicitly selected CORP Cup numeric and chooser settings."""
+		super().clean()
+		if self.tb_ruleset == "corp_cup":
+			from corpoch.match_rules import validate_corp_cup_profile
+			try:
+				validate_corp_cup_profile(
+					self.num_players, self.num_rounds, self.num_bans,
+					self.ban_ruleset, self.pick_ruleset, self.num_rounds + 4,
+				)
+				if self.seed_inversions:
+					raise ValueError("CORP Cup does not permit seed inversions.")
+			except ValueError as error:
+				raise ValidationError(str(error)) from error
+
 	@property
 	def total_bans(self) -> int:
 		return self.num_bans * self.num_players
@@ -145,7 +160,9 @@ class BracketRules(models.Model):
 		"""
 		Is the tie-breaker chart pickable
 		"""
-		if self.tb_ruleset == TB_RULESETS[0][0] or self.tb_ruleset == TB_RULESETS[1][0] or self.tb_ruleset[4][0]: #default, deferban, or  Bansave
+		if self.tb_ruleset == "corp_cup":
+			return True
+		if self.tb_ruleset == TB_RULESETS[0][0] or self.tb_ruleset == TB_RULESETS[1][0] or self.tb_ruleset[4][0]: # Preserve legacy rules until separately verified.
 			return False
 		else:
 			return True
