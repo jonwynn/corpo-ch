@@ -4,6 +4,8 @@
 
 ### Added
 
+- A read-only staging service checker that pins the expected development resources before using credentials, verifies the bot/application, member intent, channel and human referee roles, and reads Google spreadsheet identity and edit-capability metadata. It does not start the bot, modify a database, send messages or write spreadsheet cells. Twenty-five isolated tests cover request restrictions, sanitized failures and Google authentication transport compatibility.
+- Optional additional Discord referee roles with additive migration `dbot.0006`, preserving the existing primary-role setting. Guild administration limits selection to active roles in the same guild; match start accepts any configured role. Successful guild refresh combines human members without granting administrator privileges.
 - An offline staging preflight that reads an explicit private resource inventory, checks local credential inputs without displaying secrets, and reports missing fields separately from valid resource configuration. It does not start or contact services.
 - A staff-only website viewer contract covering recorded scores, stable player slots, bans and saves, chart selections, corrections, access and refresh behavior.
 - Independent match-state fixtures for the approved blue-and-coral layout and later integration checks.
@@ -26,6 +28,8 @@
 
 ### Changed
 
+- Referee synchronization publishes one complete membership update after remote lookups succeed, with a guild-row lock and a fresh configuration check. Missing channels no longer block that update. Failed lookups or changed role configuration retain the previous membership; role selection still requires a successful guild refresh before website access changes.
+- Documented read-only service verification, rejected-token recovery in Notepad++, and the guild refresh required to apply referee-role membership changes to website access.
 - Documented dedicated Discord application replacement, required Server Members Intent, the full development permission profile, and the separate roles for the bot and human referees. The credential guide now distinguishes successful bot installation from saved local credentials and verified service access.
 - Discord login starts locally with an expiring, browser-bound authorization attempt. Callbacks consume the attempt before contacting Discord; missing, mismatched, expired and replayed state return a manual retry page. The flow uses the existing database session table, with no new migration.
 - Discord token requests have connection/read timeouts, no automatic HTTP redirects and sanitized errors. Browser requests renew expired tokens; scheduled refresh retains credentials after temporary or configuration failures and removes only an explicitly invalid grant.
@@ -52,7 +56,7 @@
 
 ### Delivery status
 
-The backend and viewer milestones are implemented but unreleased. The guide's automated-check block passes in Windows PowerShell 5.1: 252 application tests using the real SQLite migration chain through `0030`, 78 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Application checks include OAuth session binding, token recovery, disabled-account rejection and saved-ban export corrections. Foundation checks include 21 offline staging preflight cases. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
+The backend and viewer milestones are implemented but unreleased. Current validation passes 273 application tests using the real SQLite migration chain through `corpoch.0030` and `dbot.0006`, plus 103 executed foundation tests with 9 explicit skips. This includes 21 referee-role cases and 25 read-only service-check cases with simulated responses. The unchanged refresh controller previously passed 12 Node tests. The guide's command pattern was verified in Windows PowerShell 5.1; all 13 current PowerShell blocks parse in that version. Application checks also cover OAuth session binding, token recovery, disabled-account rejection and saved-ban export corrections. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
 A user-run verification on `2e32fae` confirmed 190 application tests, 57 executed foundation tests with 9 explicit skips, 12 Node controller tests and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
 
@@ -60,6 +64,6 @@ The original five native MySQL checks passed on MySQL 8.4.11/InnoDB with mysqlcl
 
 The prepared instance was relocated outside AppData after confirming Windows app-private redirection. Its requested and physical paths now match, and the development-app rerun passed in 20.971 seconds. A standalone PowerShell run also passed all five tests in 1.165 seconds for the test bodies, removed the disposable database and stopped the server. Local setup is verified from both environments; deployment settings and viewer gates remain unchanged.
 
-The expanded eight-check native suite passes, including OAuth state consumption and token/callback concurrency with mocked Discord responses. Test bodies took 1.512 seconds; the disposable database was removed and the local server stopped. The private inventory preflight reports its three missing credential inputs without contacting services.
+The expanded eight-check native suite passes, including OAuth state consumption and token/callback concurrency with mocked Discord responses. The latest rerun after the role migration took 1.492 seconds for test bodies; the disposable database was removed and the local server stopped. Referee-specific concurrent role edits have isolated behavioral tests but no native MySQL overlap test. Private inventory validation and read-only service verification remain separate from runtime startup and export acceptance.
 
 Deployment-specific MySQL checks, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

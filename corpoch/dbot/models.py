@@ -28,6 +28,7 @@ class Guilds(models.Model):
 	icon = models.CharField(max_length=255, null=True, blank=True, help_text="The avatar for a Guild.")
 	deleted = models.BooleanField(default=False, help_text="Is deleted/not visible by bot.")
 	ref_role = models.ForeignKey("Roles", related_name="role_ref", verbose_name="Discord Ref Role", on_delete=models.SET_NULL, null=True, blank=True, help_text="Discord Role for referee's to start matches.")
+	additional_ref_roles = models.ManyToManyField('Roles', related_name='additional_ref_guilds', verbose_name='Additional Discord Ref Roles', blank=True, help_text='Additional roles in this guild that can start matches. Any configured referee role is sufficient.')
 	admins = models.ManyToManyField('corpoch.DiscordUser', related_name="guilds_admin", verbose_name="Tournament Guild Admins", help_text="Admin users for this guild.", blank=True)
 	referees = models.ManyToManyField('corpoch.DiscordUser', related_name="guilds_referee", verbose_name="Tournament Guild Referee", help_text="Referee users for this guild", blank=True)
 
@@ -37,6 +38,14 @@ class Guilds(models.Model):
 
 	def __str__(self):
 		return str(self.name)
+
+	def configured_referee_roles(self):
+		"""Returns active referee roles belonging to this guild."""
+		if not self.pk or self.deleted:
+			return Roles.objects.none()
+		return Roles.objects.filter(guild_id=self.pk, deleted=False).filter(
+			models.Q(pk=self.ref_role_id) | models.Q(additional_ref_guilds=self),
+		).distinct()
 
 class Channels(models.Model):
 	"""

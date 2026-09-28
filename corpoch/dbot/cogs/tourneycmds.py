@@ -40,8 +40,11 @@ class DiscordMatch():
 			await self.msg.respond("No active tourney - running exhibition mode not supported now", ephemeral=True)
 			return False
 
-		ref_role = self.referee.get_role(self.tourney.guild.ref_role.id)
-		if not ref_role and not self.referee.guild_permissions.administrator:
+		referee_role_ids = await sync_to_async(list)(
+			self.tourney.guild.configured_referee_roles().values_list('id', flat=True),
+		)
+		is_referee = any(self.referee.get_role(role_id) for role_id in referee_role_ids)
+		if not is_referee and not self.referee.guild_permissions.administrator:
 			await self.msg.respond("You are not a ref for this tournament!", ephemeral=False)
 			return False
 		try:

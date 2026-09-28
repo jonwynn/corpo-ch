@@ -33,7 +33,9 @@ This profile has permission value `378225675264`; it is broader than the five me
 
 For a private development bot, set **Installation > Install Link** to **None**, then **Bot > Public Bot** off. Use an explicit OAuth2 URL generated with the scopes and permissions above, selecting Guild Install. A Discord Provided Link instead uses saved default install settings. Leave **Interactions Endpoint URL** blank because the implementation receives interactions through its Gateway connection. The website OAuth callback will be supplied with the isolated staging launcher.
 
-The bot's role is separate from the role assigned to human referees. Record the human referee role IDs for staging setup, but do not add an extra field to `staging-resources.json`; its current format does not accept one. The current guild model selects one referee role. Accepting either of several roles requires updating both bot authorization and the stored referee-membership synchronization before that pilot; granting administrator access is not a substitute. The staging database must also contain an active tournament and an active bracket using the test channel as its score-log channel before `/tourney match` can start a match.
+The bot's role is separate from the roles assigned to human referees. Record the human referee role IDs for staging setup, but do not add an extra field to `staging-resources.json`; its current format does not accept one. After applying `dbot.0006`, the guild administration form supports the existing **Discord Ref Role** and optional **Additional Discord Ref Roles**. A member with any configured active role in that guild can start a match; no administrator grant is needed. Foreign-guild and deleted roles are excluded.
+
+After changing the selected roles, run the guild's **Update Discord Info** action in the isolated staging application, or wait for its configured guild-refresh job. A successful refresh stores the union of human members from those roles and removes stale referee membership. The website checks those stored memberships on its next request; it does not contact Discord on every viewer refresh. Changing role selection alone does not immediately refresh website access. The staging database must also contain an active tournament and an active bracket using the test channel as its score-log channel before `/tourney match` can start a match.
 
 ## 1. Enter the two Discord credentials
 
@@ -60,13 +62,15 @@ Notepad++ opens four tabs. In [Discord Developer Portal](https://discord.com/dev
 
 In `dev-credentials.env`, use these values from that same application:
 
-1. **Bot token**: put the token between the quotes after `BOT_TOKEN=`.
+1. **Bot token**: open the application's **Bot** page and put its token between the quotes after `BOT_TOKEN=`. Paste only the token, without a `Bot ` prefix or spaces.
 2. **OAuth2 client secret**: put the client secret between the quotes after `BOT_SECRET=`. This is different from the bot token and the application's Public Key.
 3. Press **Ctrl+S** in Notepad++ and close the credential tab.
 
 For a newly created application, use its own credentials; the original Corpo application's credentials are not needed. If someone else manages the selected development application, obtain its credentials privately from that owner. Coordinate before resetting credentials or starting a second instance of the same application. Do not use production credentials. The [Discord OAuth2 documentation](https://docs.discord.com/developers/topics/oauth2) describes the client ID, client secret and authorization-code flow.
 
 Keep these values out of terminal commands, chat, screenshots and the repository's `.env` file. The prepared file is not loaded by the application yet. A callback address will be supplied with the isolated staging launcher; do not change production OAuth redirects.
+
+If the offline preflight passes but step 4 reports **Discord bot identity: credentials were rejected**, Discord rejected the saved `BOT_TOKEN`. The preflight checks file structure, not whether a credential works. Reopen the private file with the command above and replace only `BOT_TOKEN` with the token for the selected development application. The application ID, Public Key and OAuth2 client secret cannot replace it. If the current token is unavailable, use **Reset Token** on that application's Bot page, then save the new token; resetting invalidates the previous token for that application. See [Discord's credential instructions](https://docs.discord.com/developers/quick-start/getting-started#fetching-your-credentials). Save with **Ctrl+S**, close the credential tab and rerun step 4. Keep `BOT_SECRET` and the Google key unchanged unless their own checks require a correction.
 
 ## 2. Save the Google service-account key
 
@@ -142,6 +146,59 @@ Inventory validity and credential readiness are separate results. A valid invent
 
 When the full check passes and sheet sharing is complete, report **“Credentials saved; test sheet shared.”** Do not paste the files. If something fails, send only the error message after checking it contains no credentials.
 
+## 4. Verify development identities and access
+
+This optional command contacts Discord and Google. It authenticates the saved bot token and Google service-account key, then reads metadata for the explicitly selected development channel, roles and spreadsheet. It does not start the bot or application, read spreadsheet cells, send messages, change a database, or export results. Google authentication uses read-only scopes; reported edit capabilities describe the account's access, not a successful test write. The OAuth client secret is still verified later through browser login.
+
+Run this only after step 3 passes. Independently obtain the application, server, channel and test spreadsheet IDs from their intended development resources. The checker compares all four with the private inventory before reading credentials or contacting services. Do not automatically copy all expected IDs from that inventory: the comparison is intended to catch a wrong destination.
+
+Find the application ID under **Developer Portal > General Information**. For Discord server, channel and role IDs, enable **User Settings > Advanced > Developer Mode**, then use the corresponding **Copy ID** action. The spreadsheet ID is the part of its address between `/d/` and `/edit`. Human role IDs are optional for this checker: press **Enter** without entering any to skip validation of specific roles. Supply all intended referee role IDs before the referee pilot.
+
+Paste this block into **Windows PowerShell**. Estimated duration: **10–60 seconds**, including entering IDs; slow services may take longer. No GPU. It asks only for resource IDs, never secrets. Separate multiple human referee role IDs with commas.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    $viewer_branch = git branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
+        throw 'This folder is not on jons-tree-branch. Stop here.'
+    }
+    $staging_root = Join-Path $env:USERPROFILE 'CorpoCH\staging'
+    $probe_arguments = @(
+        '--resources', (Join-Path $staging_root 'staging-resources.json'),
+        '--expected-bot-id', (Read-Host 'DEV application ID'),
+        '--expected-guild-id', (Read-Host 'DEV server ID'),
+        '--expected-channel-id', (Read-Host 'DEV test text-channel ID'),
+        '--expected-spreadsheet-id', (Read-Host 'Blank test spreadsheet ID, not its full link')
+    )
+    $referee_roles = Read-Host 'Human referee role IDs, separated by commas, or Enter to skip'
+    foreach ($referee_role in ($referee_roles -split ',')) {
+        if (-not [string]::IsNullOrWhiteSpace($referee_role)) {
+            $probe_arguments += @('--referee-role-id', $referee_role.Trim())
+        }
+    }
+    .\.venv\Scripts\python.exe -B -m tests.staging_service_check @probe_arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Service verification is incomplete. Report the sanitized check output.'
+    }
+}
+```
+
+Success reports the expected bot identity, Server Members Intent configuration, channel metadata, human role existence when requested, Google authentication, the expected spreadsheet and edit-capability metadata. Failures stop the sequence and retain completed check labels. No response body or credential is printed. The transport rejects redirects, limits response size, uses bounded connection/read waits and does not automatically retry service operations.
+
+| Result | Next action |
+|---|---|
+| Inventory does not match expected DEV resources | Correct the intended IDs before retrying; no credentials were read. |
+| Discord identity rejected or mismatched | Check the new application's saved bot token; do not use the original application's token. |
+| Server Members Intent missing | Enable it on the DEV application's Bot page. |
+| Test channel or referee role unavailable | Check the server/channel IDs, bot membership and the human role IDs. |
+| Google authentication failed | Check the downloaded test key and Windows clock. |
+| Sheets or Drive access denied/unavailable | Enable the corresponding API in the service-account project and share only the test sheet with that account. |
+| Google does not report edit permission | Give the service account Editor access to the test sheet and check file restrictions. |
+
+A pass does not verify effective channel write permissions, individual human memberships, Gateway startup, the OAuth callback or export formatting/protected ranges. Those remain controlled staging checks. Role discovery alone does not configure the application's referee authorization.
+
 ## Login changes available for staging
 
 Discord login begins at the local `/auth/start` route. It binds a short-lived authorization attempt to the browser session and verifies the callback before exchanging its code. The existing `/auth` callback address stays in use. Restart login from the website after upgrading; an older authorization link without the new state value is rejected.
@@ -154,7 +211,7 @@ Browser and scheduled renewal coordinate on the same token row. Renewal holds th
 
 ## Work required before service testing
 
-Credential preparation is the current manual checkpoint. The following implementation and configuration work must finish before starting the real application:
+Credential preparation and read-only verification precede runtime setup. The following implementation and configuration work must finish before starting the real application:
 
 - A fresh staging database and media directory, an explicit local MySQL port, and a separate Redis/broker environment. The disposable MySQL checker is not a persistent staging installation. Do not copy the production database or reuse its queues.
 - Enforced development application, guild, channel and spreadsheet destinations. `HOME_GUILD_ID` alone does not restrict bot activity. Normal startup restores stored matches and may synchronize commands; workers can publish stored submissions.

@@ -7,12 +7,14 @@ from datetime import timedelta
 from unicodedata import normalize, category
 from re import sub
 
+from asgiref.sync import sync_to_async
 from discord import Embed, File, AppEmoji
 from discord.ext import tasks
 from discord.ext.commands import Bot
 
 import django
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -116,7 +118,18 @@ async def refresh_match_message(bot, match_id):
 			await view.init()
 			await view.showTool()
 
+def publish_guild_referees(guild_id, expected_role_ids, referee_user_ids):
+	"""Publishes membership while holding the guild row used by admin edits."""
+	from corpoch.dbot.models import Guilds
+
+	with transaction.atomic():
+		guild = Guilds.objects.select_for_update().get(pk=guild_id)
+		if set(guild.configured_referee_roles().values_list('id', flat=True)) != expected_role_ids:
+			raise RuntimeError('Referee roles changed during the update. Run Update Discord Info again.')
+		guild.referees.set(referee_user_ids)
+
 async def update_guild(bot, guild_id):
+	guild = None
 	try:
 		guild = bot.get_guild(guild_id)
 	except discord.Forbidden:
@@ -132,36 +145,35 @@ async def update_guild(bot, guild_id):
 
 	await guild.chunk()
 	dbguild.name = guild.name
+	dbguild.deleted = False
 	if guild.icon:
 		dbguild.icon = guild.icon.url
 
 	from corpoch.dbot.models import Roles
-	for role in Roles.objects.all().filter(guild__id=guild_id):
-		try:
-			grole = await guild.fetch_role(role.id)
-		except discord.NotFound:
-			role.deleted = True
-		else:
-			role.name = grole.name
-		finally:
-			await role.asave()
+	roles = await guild.fetch_roles()
+	Roles.objects.filter(guild_id=guild_id).exclude(id__in=[role.id for role in roles]).update(deleted=True)
 
 	from corpoch.models import DiscordUser
 	admin_roles = []
-	for role in await guild.fetch_roles():
+	for role in roles:
 		theRole, created = Roles.objects.get_or_create(id=role.id, guild=dbguild)
 		theRole.name = role.name
+		theRole.deleted = False
 		if role.permissions.administrator:
 			admin_roles.append(role)
-		if dbguild.ref_role and int(role.id) == int(dbguild.ref_role.id):
-			dbguild.referees.clear()
+		await theRole.asave()
+
+	referee_role_ids = set(dbguild.configured_referee_roles().values_list('id', flat=True))
+	referee_users = {}
+	for role in roles:
+		if role.id in referee_role_ids:
 			for mem in role.members:
+				if mem.bot or mem.id in referee_users:
+					continue
 				user, created = DiscordUser.objects.get_or_create(id=mem.id)
 				if created:
 					await update_user(bot, user.id)
-				dbguild.referees.add(user)
-
-		await theRole.asave()
+				referee_users[user.id] = user
 	dbguild.admins.clear()
 	for role in admin_roles:
 		for mem in role.members:
@@ -176,7 +188,7 @@ async def update_guild(bot, guild_id):
 	for channel in Channels.objects.all().filter(guild__id=guild_id):
 		try:
 			gchannel = await guild.fetch_channel(channel.id)
-		except discord.Forbidden:
+		except (discord.Forbidden, discord.NotFound):
 			channel.deleted = True
 		else:
 			channel.name = gchannel.name
@@ -189,7 +201,10 @@ async def update_guild(bot, guild_id):
 		theChannel.name = channel.name
 		await theChannel.asave()
 
-	await dbguild.asave()
+	await dbguild.asave(update_fields=['name', 'icon', 'deleted'])
+	# Replace membership only after every remote lookup succeeds. Empty or
+	# removed role configurations must also revoke previously stored referees.
+	await sync_to_async(publish_guild_referees)(guild_id, referee_role_ids, list(referee_users))
 
 async def update_user(bot, user_id):
 	from corpoch.models import DiscordUser

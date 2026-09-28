@@ -78,6 +78,7 @@ Paste this entire block into **PowerShell**. Estimated duration: **15–60 secon
         'tests.model_test_match_viewer',
         'tests.model_test_match_actions',
         'tests.model_test_match_bot',
+        'tests.model_test_referee_roles',
         'tests.model_test_match_admin',
         'tests.model_test_admin_imports',
         'tests.model_test_discord_auth',
@@ -255,7 +256,9 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The Python and Node commands in step 2 passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The latest combined guarded application run passed **252 tests in 19.717 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **78 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver and 21 offline staging preflight cases. The refresh controller passed **12 Node tests**. The PowerShell command blocks in the development, rollout and staging guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+The Python and Node command pattern in step 2 was verified in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The latest combined guarded application run passed **273 tests in 19.102 seconds**, applied migrations through `corpoch.0030` and `dbot.0006`, and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **103 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver, 21 offline staging preflight cases and 25 read-only service-check cases with simulated responses. The unchanged refresh controller previously passed **12 Node tests**. All 13 PowerShell command blocks in the development, rollout and staging guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+
+The 21 referee-role tests cover primary/additional roles, same-guild validation, null primary roles, deduplicated human membership, stale membership removal, failed remote lookups, changed configuration and transactional rollback. The supported admin edit path and membership publisher coordinate on the guild row; future direct role-configuration writers must acquire that same row lock. These SQLite tests verify behavior and rollback, not MySQL scheduling of concurrent role changes. The existing eight native MySQL checks also passed after the additive role migration, with test bodies taking **1.492 seconds**; the disposable database was removed and the server stopped. Real Discord and Google acceptance remain separate from these isolated checks.
 
 The local MySQL helper also passes **32 isolated PowerShell preflight checks** for preferred and legacy folder selection, ambiguous locations, missing and inaccessible paths, invalid file types, path containment, sanitized credential errors and environment restoration. These checks use temporary fixtures and do not read the prepared instance or start MySQL. Step 2 includes them in its first check group.
 

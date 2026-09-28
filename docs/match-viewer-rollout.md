@@ -14,6 +14,8 @@ Version **1.7.0-beta.1** is unreleased. No deployment has been performed. Start 
 
 ## Apply the additive schema in staging
 
+Apply both `corpoch.0030` for match action provenance and `dbot.0006` for optional additional referee roles. Existing primary referee selections remain valid. After selecting the staging human referee roles, refresh Discord guild information before checking website access; role selection alone does not rebuild stored membership. Run the [read-only service check](match-viewer-staging.md#4-verify-development-identities-and-access) before launching the bot or attempting an export.
+
 Use PowerShell in the staging checkout with its approved virtual environment and staging configuration. Estimated duration: 5–60 seconds for a small staging database; CPU/database I/O only, no GPU. Larger schemas, locks or slow storage can take longer. Inspect the planned operations before running the second command.
 
 ```powershell

@@ -184,7 +184,16 @@ def check_discord_credentials(path):
     :return: Readiness issues containing no credential values"""
     if not path.exists():
         return ["dev-credentials.env is missing. Enter BOT_TOKEN and BOT_SECRET in that file."]
-    text = read_private_text(path, "Discord credential file")
+    values = parse_discord_credentials(read_private_text(path, "Discord credential file"))
+    return [f"{field} is missing or blank." for field in ("BOT_TOKEN", "BOT_SECRET") if not values.get(field)]
+
+
+def parse_discord_credentials(text):
+    """
+    Parses explicit private assignments without environment fallback or expansion
+
+    :param str text: Bounded private credential text
+    :return: Parsed credential values; callers must never print them"""
     values = {}
     for line in text.splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
@@ -198,7 +207,7 @@ def check_discord_credentials(path):
         if any(character.isspace() or ord(character) < 32 or character in "$%`\\\"'" for character in value):
             raise StagingInputError("Discord credential values cannot contain whitespace, escapes or interpolation.")
         values[match[1]] = value
-    return [f"{field} is missing or blank." for field in ("BOT_TOKEN", "BOT_SECRET") if not values.get(field)]
+    return values
 
 
 def check_google_credentials(path):
@@ -210,6 +219,15 @@ def check_google_credentials(path):
     if not path.exists():
         return ["google-service-account.json is missing. Import the downloaded service-account key."]
     document = load_json_object(path, "Google service-account file")
+    return validate_google_credentials(document)
+
+
+def validate_google_credentials(document):
+    """
+    Validates an already bounded Google key object without authenticating
+
+    :param dict document: Parsed private service-account JSON
+    :return: Safe structure issues without key material"""
     issues = []
     if document.get("type") != "service_account":
         issues.append("The Google key type must be service_account.")

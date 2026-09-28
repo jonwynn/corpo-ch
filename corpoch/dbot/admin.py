@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 from corpoch.dbot.models import Guilds, Channels, Roles
 from django.utils.html import mark_safe
@@ -5,12 +6,26 @@ from django.utils.html import mark_safe
 from corpoch.models import DiscordUser
 import corpoch.dbot.tasks
 
+class GuildAdminForm(forms.ModelForm):
+	"""Limits referee role selections to active roles in the edited guild."""
+
+	class Meta:
+		model = Guilds
+		fields = '__all__'
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		roles = Roles.objects.filter(guild_id=self.instance.pk, deleted=False) if self.instance.pk else Roles.objects.none()
+		self.fields['ref_role'].queryset = roles
+		self.fields['additional_ref_roles'].queryset = roles
+
 @admin.register(Guilds)
 class GuildAdmin(admin.ModelAdmin):
+	form = GuildAdminForm
 	list_display = ('_icon', '_id', 'name')
 	readonly_fields = ['name', 'icon', 'deleted']
 	actions = ['update_discord_guild']
-	filter_horizontal = ('admins', 'referees',)
+	filter_horizontal = ('admins', 'referees', 'additional_ref_roles',)
 	def _id(self, obj):
 		return str(obj.id)
 
@@ -20,15 +35,6 @@ class GuildAdmin(admin.ModelAdmin):
 			return f'<img src="{obj.icon}" width="24" height="24"'
 		else:
 			return "None"
-
-	def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
-		if db_field.name == "ref_role" or db_field.name == "admin_role":
-			if 'object_id' in request.resolver_match.kwargs:
-				guild = self.model.objects.get(pk=request.resolver_match.kwargs['object_id'])
-				kwargs['queryset'] = Roles.objects.all().filter(guild=guild)
-			else:
-				kwargs["queryset"] = Roles.objects.none()
-		return super(GuildAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
 	@admin.action(description="Update Discord Info")
 	def update_discord_guild(modeladmin, request, queryset):
