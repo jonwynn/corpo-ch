@@ -31,13 +31,17 @@ function stop_local_check {
 function read_private_item {
     param(
         [string]$item_path,
-        [string]$item_label
+        [string]$item_label,
+        [bool]$allow_missing = $false
     )
 
     try {
         return Get-Item -LiteralPath $item_path -Force -ErrorAction Stop
     }
     catch [Management.Automation.ItemNotFoundException], [Management.Automation.DriveNotFoundException] {
+        if ($allow_missing -and $_.Exception -is [Management.Automation.ItemNotFoundException]) {
+            return $null
+        }
         stop_local_check "$item_label was not found: $item_path. Check that local MySQL setup is complete for the Windows account shown above."
     }
     catch [UnauthorizedAccessException], [Security.SecurityException] {
@@ -58,6 +62,52 @@ function validate_private_root {
     if (($root_item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
         stop_local_check 'Private MySQL paths must not contain symbolic links or junctions.'
     }
+}
+
+function select_private_root {
+    param(
+        [string]$user_profile,
+        [string]$local_app_data
+    )
+
+    if ([string]::IsNullOrWhiteSpace($user_profile) -or
+        -not [IO.Path]::IsPathRooted($user_profile)) {
+        stop_local_check 'Windows USERPROFILE is unavailable or is not an absolute path.'
+    }
+    if ([string]::IsNullOrWhiteSpace($local_app_data) -or
+        -not [IO.Path]::IsPathRooted($local_app_data)) {
+        stop_local_check 'Windows LOCALAPPDATA is unavailable or is not an absolute path.'
+    }
+
+    $preferred_root = [IO.Path]::GetFullPath(
+        (Join-Path $user_profile 'CorpoCH\mysql-test')
+    ).TrimEnd('\')
+    $legacy_root = [IO.Path]::GetFullPath(
+        (Join-Path $local_app_data 'CorpoCH\mysql-test')
+    ).TrimEnd('\')
+    $preferred_item = read_private_item $preferred_root 'The private MySQL folder' $true
+    if ($null -ne $preferred_item) {
+        validate_private_root $preferred_root
+    }
+    if ($preferred_root.Equals($legacy_root, [StringComparison]::OrdinalIgnoreCase)) {
+        validate_private_root $preferred_root
+        return $preferred_root
+    }
+
+    $legacy_item = read_private_item $legacy_root 'The legacy private MySQL folder' $true
+    if ($null -ne $preferred_item -and $null -ne $legacy_item) {
+        stop_local_check "Two private MySQL locations exist: $preferred_root and $legacy_root. Resolve the duplicate setup before running checks; neither instance was started."
+    }
+    if ($null -ne $preferred_item) {
+        return $preferred_root
+    }
+    if ($null -ne $legacy_item) {
+        validate_private_root $legacy_root
+        return $legacy_root
+    }
+
+    validate_private_root $preferred_root
+    return $preferred_root
 }
 
 function validate_private_path {
@@ -152,17 +202,10 @@ try {
     if (-not (Test-Path -LiteralPath $python_path -PathType Leaf)) {
         stop_local_check 'The prepared Python environment is missing.'
     }
-    if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
-        stop_local_check 'Windows LOCALAPPDATA is unavailable.'
-    }
-
     $current_step = 'verifying the prepared private MySQL instance'
-    $private_root = [IO.Path]::GetFullPath(
-        (Join-Path $env:LOCALAPPDATA 'CorpoCH\mysql-test')
-    ).TrimEnd('\')
     Write-Host ("Windows account: {0}" -f [Security.Principal.WindowsIdentity]::GetCurrent().Name)
+    $private_root = select_private_root $env:USERPROFILE $env:LOCALAPPDATA
     Write-Host "Private MySQL folder: $private_root"
-    validate_private_root $private_root
     $metadata_path = validate_private_path $private_root (Join-Path $private_root 'instance.json') $false 'The instance.json metadata file'
     $configuration_path = validate_private_path $private_root (Join-Path $private_root 'server.ini') $false 'The server.ini configuration file'
     $runner_path = validate_private_path $private_root (Join-Path $private_root 'runner.clixml') $false 'The runner.clixml credential file'

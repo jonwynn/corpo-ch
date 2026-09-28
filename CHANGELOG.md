@@ -25,7 +25,8 @@
 
 ### Changed
 
-- Local MySQL preflight errors identify the missing, inaccessible or incorrectly typed item and show the expected folder and Windows account. Credential-load errors give a specific recovery message without exposing passwords. The local guide includes 21 isolated checks for these diagnostics and their safety boundaries.
+- The prepared local MySQL command prefers `%USERPROFILE%\CorpoCH\mysql-test`, outside Windows app-private AppData redirection. Existing AppData setups remain supported only when the preferred folder is absent; ambiguous locations and access errors stop before startup.
+- Local MySQL preflight errors identify the missing, inaccessible or incorrectly typed item and show the expected folder and Windows account. Credential-load errors give a specific recovery message without exposing passwords. The local guide includes 32 isolated checks for folder selection, diagnostics and their safety boundaries.
 - Added the PowerShell command to open the local development and rollout guides in Notepad++.
 - Incorporated verified fixes from the maintainer's [production-fix commit `a866682`](https://github.com/Jetsurf/corpo-ch/commit/a866682abe9db80bc195120051f1bdfd1d0381e1): channel/role admin search, per-match bot startup recovery, qualifier validation wording and 15-column qualifier export. Existing CORP action and publication checks remain in place.
 - Replaced append/delete player roster export with a single batch that replaces roster values, clears stale entries, and preserves the header and unrelated columns. Player names and Discord IDs are written as literal text.
@@ -47,5 +48,7 @@ The backend and viewer milestones are implemented but unreleased. The guide's ex
 A user-run verification on `2e32fae` confirmed the same passing counts and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
 
 Five native MySQL checks pass on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 23.083 seconds with normal profile loading. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
+
+The prepared instance was relocated outside AppData after confirming Windows app-private redirection. Its requested and physical paths now match, and the development-app rerun passed in 20.971 seconds. Standalone PowerShell confirmation remains pending.
 
 Deployment-specific MySQL checks, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

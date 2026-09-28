@@ -17,7 +17,7 @@ if ($parse_errors.Count -gt 0) {
 
 $helper_names = @(
     'stop_local_check', 'read_private_item', 'validate_private_root',
-    'validate_private_path', 'read_private_credential'
+    'select_private_root', 'validate_private_path', 'read_private_credential'
 )
 $helper_functions = @($test_syntax.FindAll({
     param($syntax_node)
@@ -149,13 +149,80 @@ try {
         } "The saved credential file 'runner.clixml' could not be opened. It may belong to another Windows account or be damaged."
     }
 
+    # The preferred location stays outside AppData package redirection.
+    $selection_profile = Join-Path $fixture_root 'selection-profile'
+    $selection_app_data = Join-Path $fixture_root 'selection-app-data'
+    $preferred_fixture = Join-Path $selection_profile 'CorpoCH\mysql-test'
+    $legacy_fixture = Join-Path $selection_app_data 'CorpoCH\mysql-test'
+    expect_preflight_failure {
+        select_private_root $selection_profile $selection_app_data
+    } 'The private MySQL folder was not found:' $preferred_fixture
+
+    [IO.Directory]::CreateDirectory($preferred_fixture) | Out-Null
+    assert_test_condition (
+        (select_private_root $selection_profile $selection_app_data) -eq $preferred_fixture
+    ) 'The command did not select the preferred profile location.'
+    $test_results.count++
+
+    [IO.Directory]::CreateDirectory($legacy_fixture) | Out-Null
+    expect_preflight_failure {
+        select_private_root $selection_profile $selection_app_data
+    } 'Two private MySQL locations exist:' $preferred_fixture
+    assert_test_condition (
+        (select_private_root (Join-Path $fixture_root 'unused-profile') $selection_app_data) -eq $legacy_fixture
+    ) 'The existing AppData location was not supported when the preferred location was absent.'
+    $test_results.count++
+
+    expect_preflight_failure { select_private_root '' $selection_app_data } 'Windows USERPROFILE is unavailable'
+    expect_preflight_failure { select_private_root 'relative-profile' $selection_app_data } 'Windows USERPROFILE is unavailable'
+    expect_preflight_failure { select_private_root $selection_profile '' } 'Windows LOCALAPPDATA is unavailable'
+
+    $file_profile = Join-Path $fixture_root 'file-profile'
+    $file_root = Join-Path $file_profile 'CorpoCH\mysql-test'
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file_root)) | Out-Null
+    [IO.File]::WriteAllText($file_root, '')
+    expect_preflight_failure {
+        select_private_root $file_profile $selection_app_data
+    } 'is a file instead of a directory:' $file_root
+
+    & {
+        $selection_reads = @{ count = 0 }
+        function Get-Item {
+            $selection_reads.count++
+            throw [UnauthorizedAccessException]::new('fixture-secret-do-not-display')
+        }
+        expect_preflight_failure {
+            select_private_root $selection_profile $selection_app_data
+        } 'Windows denied access to The private MySQL folder' $preferred_fixture
+        assert_test_condition ($selection_reads.count -eq 1) 'Access denial incorrectly attempted the legacy location.'
+    }
+    & {
+        $selection_reads = @{ count = 0 }
+        function Get-Item {
+            $selection_reads.count++
+            throw [Management.Automation.DriveNotFoundException]::new('fixture-secret-do-not-display')
+        }
+        expect_preflight_failure {
+            select_private_root $selection_profile $selection_app_data
+        } 'The private MySQL folder was not found:' $preferred_fixture
+        assert_test_condition ($selection_reads.count -eq 1) 'An unavailable drive incorrectly attempted the legacy location.'
+    }
+    & {
+        function Get-Item {
+            return [pscustomobject]@{ PSIsContainer = $true; Attributes = [IO.FileAttributes]::ReparsePoint }
+        }
+        expect_preflight_failure {
+            select_private_root $selection_profile $selection_app_data
+        } 'must not contain symbolic links or junctions'
+    }
+
     # Exercise the complete failure/finally path under an empty, temporary profile.
     $fixture_repository = Join-Path $fixture_root 'repository'
     $fixture_python_directory = Join-Path $fixture_repository '.venv\Scripts'
     [IO.Directory]::CreateDirectory($fixture_python_directory) | Out-Null
     [IO.File]::WriteAllText((Join-Path $fixture_python_directory 'python.exe'), '')
     $fixture_environment_names = @(
-        'LOCALAPPDATA', 'MYSQL_TEST_HOST', 'MYSQL_TEST_PORT', 'MYSQL_TEST_USER',
+        'USERPROFILE', 'LOCALAPPDATA', 'MYSQL_TEST_HOST', 'MYSQL_TEST_PORT', 'MYSQL_TEST_USER',
         'MYSQL_TEST_PASSWORD', 'MYSQL_PWD'
     )
     $original_environment = @{}
@@ -179,7 +246,8 @@ try {
                     $fixture_environment_name, 'fixture-secret-do-not-display', 'Process'
                 )
             }
-            $env:LOCALAPPDATA = Join-Path $fixture_root 'empty-profile'
+            $env:USERPROFILE = Join-Path $fixture_root 'empty-profile'
+            $env:LOCALAPPDATA = Join-Path $fixture_root 'empty-app-data'
             $script_failure = $null
             $captured_output = @()
             try {
@@ -192,10 +260,12 @@ try {
             ) 'The full command did not report its controlled preflight failure.'
             $output_text = $captured_output -join "`n"
             assert_test_condition ($output_text.Contains('Windows account:')) 'The command omitted account context.'
-            assert_test_condition ($output_text.Contains('Private MySQL folder:')) 'The command omitted folder context.'
+            assert_test_condition (
+                $output_text.Contains((Join-Path $env:USERPROFILE 'CorpoCH\mysql-test'))
+            ) 'The command omitted the preferred folder path.'
             assert_test_condition ($output_text.Contains('The private MySQL folder was not found:')) 'The command omitted the missing-folder diagnostic.'
             assert_test_condition (-not $output_text.Contains('fixture-secret-do-not-display')) 'The command exposed an environment value.'
-            foreach ($fixture_environment_name in $fixture_environment_names | Where-Object { $_ -ne 'LOCALAPPDATA' }) {
+            foreach ($fixture_environment_name in $fixture_environment_names | Where-Object { $_ -notin @('USERPROFILE', 'LOCALAPPDATA') }) {
                 assert_test_condition (
                     [Environment]::GetEnvironmentVariable($fixture_environment_name, 'Process') -eq 'fixture-secret-do-not-display'
                 ) "The command changed the prior $fixture_environment_name value."
