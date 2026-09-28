@@ -28,11 +28,44 @@ function stop_local_check {
     throw $failure
 }
 
+function read_private_item {
+    param(
+        [string]$item_path,
+        [string]$item_label
+    )
+
+    try {
+        return Get-Item -LiteralPath $item_path -Force -ErrorAction Stop
+    }
+    catch [Management.Automation.ItemNotFoundException], [Management.Automation.DriveNotFoundException] {
+        stop_local_check "$item_label was not found: $item_path. Check that local MySQL setup is complete for the Windows account shown above."
+    }
+    catch [UnauthorizedAccessException], [Security.SecurityException] {
+        stop_local_check "Windows denied access to $item_label at $item_path. Check this account's access to the private MySQL folder."
+    }
+    catch {
+        stop_local_check "Could not inspect $item_label at $item_path ($($_.Exception.GetType().Name))."
+    }
+}
+
+function validate_private_root {
+    param([string]$private_root)
+
+    $root_item = read_private_item $private_root 'The private MySQL folder'
+    if (-not $root_item.PSIsContainer) {
+        stop_local_check "The private MySQL folder is a file instead of a directory: $private_root."
+    }
+    if (($root_item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        stop_local_check 'Private MySQL paths must not contain symbolic links or junctions.'
+    }
+}
+
 function validate_private_path {
     param(
         [string]$private_root,
         [string]$candidate_path,
-        [bool]$is_directory = $false
+        [bool]$is_directory = $false,
+        [string]$item_label = 'A required private MySQL item'
     )
 
     if ([string]::IsNullOrWhiteSpace($candidate_path) -or
@@ -44,13 +77,13 @@ function validate_private_path {
     if (-not $resolved_path.StartsWith($root_prefix, [StringComparison]::OrdinalIgnoreCase)) {
         stop_local_check 'A private instance path falls outside the prepared MySQL folder.'
     }
-    $path_type = if ($is_directory) { 'Container' } else { 'Leaf' }
-    if (-not (Test-Path -LiteralPath $resolved_path -PathType $path_type)) {
-        stop_local_check 'A required private MySQL file or folder is missing.'
+    $path_item = read_private_item $resolved_path $item_label
+    if ([bool]$path_item.PSIsContainer -ne $is_directory) {
+        $expected_type = if ($is_directory) { 'directory' } else { 'file' }
+        stop_local_check "$item_label must be a $expected_type`: $resolved_path."
     }
     $current_path = $resolved_path
     while ($current_path.Length -ge $private_root.Length) {
-        $path_item = Get-Item -LiteralPath $current_path -Force
         if (($path_item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
             stop_local_check 'Private MySQL paths must not contain symbolic links or junctions.'
         }
@@ -58,8 +91,21 @@ function validate_private_path {
             break
         }
         $current_path = [IO.Path]::GetDirectoryName($current_path)
+        $path_item = read_private_item $current_path 'A private MySQL parent folder'
     }
     return $resolved_path
+}
+
+function read_private_credential {
+    param([string]$credential_path)
+
+    try {
+        return Import-Clixml -LiteralPath $credential_path -ErrorAction Stop
+    }
+    catch {
+        $credential_name = [IO.Path]::GetFileName($credential_path)
+        stop_local_check "The saved credential file '$credential_name' could not be opened. It may belong to another Windows account or be damaged. Check the account shown above and repair the private test credentials if needed."
+    }
 }
 
 function get_mysql_listeners {
@@ -114,17 +160,20 @@ try {
     $private_root = [IO.Path]::GetFullPath(
         (Join-Path $env:LOCALAPPDATA 'CorpoCH\mysql-test')
     ).TrimEnd('\')
-    $metadata_path = validate_private_path $private_root (Join-Path $private_root 'instance.json')
-    $configuration_path = validate_private_path $private_root (Join-Path $private_root 'server.ini')
-    $runner_path = validate_private_path $private_root (Join-Path $private_root 'runner.clixml')
-    $administrator_path = validate_private_path $private_root (Join-Path $private_root 'admin.clixml')
+    Write-Host ("Windows account: {0}" -f [Security.Principal.WindowsIdentity]::GetCurrent().Name)
+    Write-Host "Private MySQL folder: $private_root"
+    validate_private_root $private_root
+    $metadata_path = validate_private_path $private_root (Join-Path $private_root 'instance.json') $false 'The instance.json metadata file'
+    $configuration_path = validate_private_path $private_root (Join-Path $private_root 'server.ini') $false 'The server.ini configuration file'
+    $runner_path = validate_private_path $private_root (Join-Path $private_root 'runner.clixml') $false 'The runner.clixml credential file'
+    $administrator_path = validate_private_path $private_root (Join-Path $private_root 'admin.clixml') $false 'The admin.clixml credential file'
     $metadata = Get-Content -LiteralPath $metadata_path -Raw | ConvertFrom-Json
     if ($metadata.purpose -ne 'corpo-match-viewer-local-tests' -or
         $metadata.version -ne '8.4.11' -or $metadata.port -ne 3307) {
         stop_local_check 'The private MySQL metadata does not match the prepared validation instance.'
     }
-    $server_path = validate_private_path $private_root $metadata.server_path
-    $data_directory = validate_private_path $private_root $metadata.data_directory $true
+    $server_path = validate_private_path $private_root $metadata.server_path $false 'The mysqld.exe server executable'
+    $data_directory = validate_private_path $private_root $metadata.data_directory $true 'The MySQL data directory'
     if ([IO.Path]::GetFileName($server_path) -ne 'mysqld.exe' -or
         $metadata.server_sha256 -notmatch '^[0-9a-fA-F]{64}$' -or
         (Get-FileHash -LiteralPath $server_path -Algorithm SHA256).Hash -ne $metadata.server_sha256) {
@@ -136,9 +185,9 @@ try {
     }
     $administrator_client = validate_private_path $private_root (
         Join-Path ([IO.Path]::GetDirectoryName($server_path)) 'mysqladmin.exe'
-    )
-    $runner_credential = Import-Clixml -LiteralPath $runner_path
-    $administrator_credential = Import-Clixml -LiteralPath $administrator_path
+    ) $false 'The mysqladmin.exe shutdown executable'
+    $runner_credential = read_private_credential $runner_path
+    $administrator_credential = read_private_credential $administrator_path
     if ($runner_credential -isnot [Management.Automation.PSCredential] -or
         $runner_credential.UserName -ne 'corpo_viewer_check' -or
         $administrator_credential -isnot [Management.Automation.PSCredential] -or

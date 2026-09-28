@@ -66,9 +66,10 @@ Paste this entire block into **PowerShell**. Estimated duration: **15–60 secon
     git log -1 --oneline
     if ($LASTEXITCODE -ne 0) { throw 'Could not read the current commit.' }
 
-    Write-Host 'CHECK 1 OF 3: foundation and isolation checks'
+    Write-Host 'CHECK 1 OF 3: foundation, isolation and local-command checks'
     .\.venv\Scripts\python.exe -m tests.viewer_test_bootstrap
     if ($LASTEXITCODE -ne 0) { throw 'Foundation checks failed. Stop here and report the error.' }
+    & ([ScriptBlock]::Create((Get-Content -LiteralPath '.\tests\mysql_local_check_tests.ps1' -Raw)))
 
     Write-Host 'CHECK 2 OF 3: application checks with a temporary database'
     $viewer_test_modules = @(
@@ -201,13 +202,14 @@ Paste the whole block into **Windows PowerShell**, opened normally under the Win
 }
 ```
 
-The command verifies the branch, prepared files and configuration checksums; starts its own MySQL process; runs five tests in a new disposable database; then stops that process. It restores any previous MySQL test environment variables. **Success ends with `PASS: All five native MySQL checks passed and the local server stopped.`** A failed check also attempts to stop the owned server and reports any incomplete shutdown. No deployment configuration or viewer switch is changed.
+The command prints the Windows account and expected test folder, verifies the branch, prepared files and configuration checksums; starts its own MySQL process; runs five tests in a new disposable database; then stops that process. It restores any previous MySQL test environment variables. **Success ends with `PASS: All five native MySQL checks passed and the local server stopped.`** A failed check also attempts to stop the owned server and reports any incomplete shutdown. No deployment configuration or viewer switch is changed.
 
 | Message or situation | Next action |
 |---|---|
 | Final PASS message | Local MySQL verification is complete. The server has stopped. |
 | Port 3307 is already in use | Stop and report the message. The command leaves the existing process alone. |
-| Missing files, credential loading error or checksum mismatch | Report the message; do not bypass the checks. This wrapper requires the prepared local instance and Windows account. |
+| Missing or inaccessible file/folder | Report the exact message, expected test folder and Windows account printed above it. The command identifies the item and stops before starting MySQL. Do not create empty replacement files. |
+| Saved credentials cannot be opened, or a checksum does not match | Report the message; do not bypass the checks. Credentials require the Windows account used for setup. An unreadable credential file does not by itself prove an account mismatch. |
 | Tests fail, cleanup fails or the server remains running | Keep the error and any reported database name/process ID for review. Do not delete the data folder or terminate an unidentified process. |
 | Another PC or fresh clone | Arrange separate test-server setup first. The private instance and credentials are not included in Git. The [manual MySQL command](match-viewer-rollout.md#verify-mysql-before-approving-its-gate) supports another prepared local test server. |
 
@@ -247,7 +249,9 @@ The spreadsheet changes have isolated request/behavior checks; actual Sheets exe
 
 ## Evidence and remaining limits
 
-The exact step 2 block passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. Its combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. The PowerShell blocks in both guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+The Python and Node commands in step 2 passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. The combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. The PowerShell blocks in both guides pass syntax parsing in Windows PowerShell 5.1. Deployment commands have not been executed.
+
+The local MySQL helper also passes **21 isolated PowerShell preflight checks** for missing and inaccessible paths, invalid file types, path containment, sanitized credential errors and environment restoration. These checks use temporary fixtures and do not read the prepared instance or start MySQL. Step 2 includes them in its first check group.
 
 A user-run verification on commit **`2e32fae`** also passed: **57 foundation checks with 9 expected skips**, **190 application tests in 18.173 seconds**, and **12 refresh tests with zero failures**. The nine model-dependent checks skipped by the foundation runner passed in the application run. Migrations through `0030`, the clean Django system check, temporary-database cleanup and the final local PASS message are recorded in that run. The preview started successfully, and its general behavior was reported as working as intended. This confirms the local verification workflow; it does not establish native MySQL, live-service or complete accessibility acceptance.
 
@@ -259,7 +263,7 @@ These tests cover the real SQLite schema, sporting transitions, delayed callback
 
 Focused browser checks covered all three approved visual states, keyboard-opened details surviving first-pick/later-round updates, a 503 retaining the `0:1` score with stale/retry status, recovery to a corrected `0:0`, and a saved light theme surviving reload. The CORP interactive example also refreshed from opening bans to `1:0` with P2's next pick. Access loss cleared the score and player names. A 390px window with a 375px content viewport had no horizontal overflow, including long player/chart names. These results do not cover every browser, zoom level or operating-system accessibility mode.
 
-The five native checks now pass on **MySQL 8.4.11/InnoDB with mysqlclient 2.3.0**. They cover default-off gates, snapshot consistency during a concurrent result/next-round commit, competing actions, connection/isolation cleanup, and fresh staff/chart-visibility checks. The runner applied the real migration chain to its disposable database, reported no Django system-check issues, and removed that database. The prepared-instance wrapper passed in Windows PowerShell 5.1: **1.105 seconds for the five test bodies; 22.520 seconds for the full start/migrate/check/cleanup/stop command**. Occupied-port refusal, shutdown after a simulated checker failure, and restoration of all five prior environment values also passed. These checks establish the local test configuration; deployment-specific concurrency, connection settings and load still require verification. `MATCH_VIEWER_MYSQL_VERIFIED` remains off by default.
+The five native checks now pass on **MySQL 8.4.11/InnoDB with mysqlclient 2.3.0**. They cover default-off gates, snapshot consistency during a concurrent result/next-round commit, competing actions, connection/isolation cleanup, and fresh staff/chart-visibility checks. The runner applied the real migration chain to its disposable database, reported no Django system-check issues, and removed that database. The prepared-instance wrapper passed in Windows PowerShell 5.1 with normal profile loading: **1.131 seconds for the five test bodies; 23.083 seconds for the full start/migrate/check/cleanup/stop command**. Occupied-port refusal, shutdown after a simulated checker failure, and restoration of all five prior environment values also passed. These checks establish the local test configuration; deployment-specific concurrency, connection settings and load still require verification. `MATCH_VIEWER_MYSQL_VERIFIED` remains off by default.
 
 OAuth login, live Discord callbacks, screenshot decoding/storage, Sheets publication and ordinary service startup remain manual integration gates. Hydra imports are delayed until its analysis operation; a missing submodule produces an explicit operation error. Actual Hydra execution is unverified. The declared Python minimum is not a tested compatibility guarantee; use the verified runtime until another version passes the same checks.
 
