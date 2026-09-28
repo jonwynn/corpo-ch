@@ -15,7 +15,7 @@ from django.urls import clear_url_caches, resolve, Resolver404
 import corpoch
 from corpoch.models import DiscordUser
 from staging.configuration import validate_configuration
-from staging.runtime import create_request_handler, create_static_handler, serve_web
+from staging.runtime import create_request_handler, create_static_handler, create_web_server, serve_web
 from staging.settings import build_web_settings
 from tests.model_test_discord_auth import load_auth_views
 from tests.test_staging_configuration import create_configuration_values
@@ -117,6 +117,7 @@ class StagingWebTests(TestCase):
 
     def test_server_binds_only_loopback_and_uses_the_static_wsgi_wrapper(self):
         from django.contrib.staticfiles.handlers import StaticFilesHandler
+        from django.core.servers.basehttp import ThreadedWSGIServer
 
         with (
             patch("django.core.servers.basehttp.WSGIServer.__init__", return_value=None) as initialize,
@@ -131,3 +132,9 @@ class StagingWebTests(TestCase):
         self.assertEqual(initialize.call_args.args[0], ("127.0.0.1", 8766))
         self.assertIsInstance(set_app.call_args.args[0], StaticFilesHandler)
         serve_forever.assert_called_once_with()
+        with patch("django.core.servers.basehttp.WSGIServer.__init__", return_value=None):
+            server = create_web_server(8766)
+        self.assertIsInstance(server, ThreadedWSGIServer)
+        self.assertTrue(server.daemon_threads)
+        self.assertIsNone(server.connections_override)
+        self.assertEqual(create_request_handler().timeout, 10)

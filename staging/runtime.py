@@ -130,6 +130,15 @@ def create_request_handler():
     class LocalRequestHandler(WSGIRequestHandler):
         """Omits access lines and raw WSGI exception diagnostics."""
 
+        timeout = 10
+
+        def handle(self):
+            """Closes inactive browser connections without logging their contents."""
+            try:
+                super().handle()
+            except TimeoutError:
+                self.close_connection = True
+
         def log_message(self, format_string, *arguments):
             """Discards request logging, including OAuth callback values."""
 
@@ -163,22 +172,32 @@ def create_static_handler(application):
     return LocalStaticHandler(application)
 
 
-def serve_web(configuration):
+def create_web_server(port):
     """
-    Serves local static assets and the application without autoreload
+    Creates a threaded loopback server with per-thread database cleanup
 
-    :param WebConfiguration configuration: Validated private configuration"""
-    from django.core.servers.basehttp import WSGIServer
-    from django.core.wsgi import get_wsgi_application
+    :param int port: Local listening port, or zero for an isolated socket check
+    :return: Local Django HTTP server"""
+    from django.core.servers.basehttp import ThreadedWSGIServer
 
-    class LocalWebServer(WSGIServer):
+    class LocalWebServer(ThreadedWSGIServer):
         """Contains request failure logging within the local web process."""
 
         def handle_error(self, request, client_address):
             """Reports request failure without private request details."""
             print("A local web request failed. Retry from the home page.", flush=True)
 
-    with LocalWebServer(("127.0.0.1", configuration.browser_port), create_request_handler()) as server:
+    return LocalWebServer(("127.0.0.1", port), create_request_handler())
+
+
+def serve_web(configuration):
+    """
+    Serves local static assets and the application without autoreload
+
+    :param WebConfiguration configuration: Validated private configuration"""
+    from django.core.wsgi import get_wsgi_application
+
+    with create_web_server(configuration.browser_port) as server:
         server.set_app(create_static_handler(get_wsgi_application()))
         print(f"Local web staging is available at http://127.0.0.1:{configuration.browser_port}/home", flush=True)
         print("Match viewer gates are off. Bot, workers and spreadsheet exports are not running.", flush=True)

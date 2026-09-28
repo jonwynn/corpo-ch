@@ -119,7 +119,7 @@ Each Python runner starts a fresh process. The runners clear deployment variable
 
 ### Optional: verify the isolated staging web loader
 
-This check loads the actual staging settings, Django application, local templates, restricted routes and static-file handler in a fresh process. It uses illustrative configuration and blocks native database connections. It reads no private credentials, opens no listener and starts no database, bot or worker. The [staging runtime guide](match-viewer-staging-runtime.md) covers the separately prepared application and real login check.
+The first check loads the actual staging settings, Django application, local templates, restricted routes and static-file handler in a fresh process. It uses illustrative configuration, blocks native database connections and opens no listener. The second check creates one temporary loopback listener to verify that idle connections do not block requests, incomplete requests time out, and request threads clean up without exposing query values. Neither check reads private credentials or starts a database, bot or worker. The [staging runtime guide](match-viewer-staging-runtime.md) covers the separately prepared application and real login check.
 
 For the prepared **Windows Python environment**, paste this block into **normal Windows PowerShell**. Estimated duration: **2–10 seconds**; CPU only, no GPU.
 
@@ -129,6 +129,8 @@ For the prepared **Windows Python environment**, paste this block into **normal 
     Set-Location -LiteralPath 'C:\git\corpo-ch'
     .\.venv\Scripts\python.exe -B -m tests.staging_web_smoke
     if ($LASTEXITCODE -ne 0) { throw 'The isolated staging web check failed. Report the output.' }
+    .\.venv\Scripts\python.exe -B -m tests.staging_http_check
+    if ($LASTEXITCODE -ne 0) { throw 'The local HTTP connection check failed. Report the output.' }
 }
 ```
 
@@ -144,10 +146,12 @@ After the Linux environment has been prepared, run the same check in **Ubuntu th
     if (-not $linux_home.StartsWith('/home/')) { throw 'Use the prepared normal Linux account.' }
     wsl.exe --distribution Ubuntu-24.04 --cd /mnt/c/git/corpo-ch --exec "$linux_home/CorpoCH/staging/venv/bin/python" -B -m tests.staging_web_smoke
     if ($LASTEXITCODE -ne 0) { throw 'The isolated Linux staging web check failed. Report the output.' }
+    wsl.exe --distribution Ubuntu-24.04 --cd /mnt/c/git/corpo-ch --exec "$linux_home/CorpoCH/staging/venv/bin/python" -B -m tests.staging_http_check
+    if ($LASTEXITCODE -ne 0) { throw 'The Linux HTTP connection check failed. Report the output.' }
 }
 ```
 
-Success prints `PASS: Fresh web runtime setup, local templates, restricted routes, static files and private logging passed.` This verifies application loading and rendering without a database connection; it does not replace the real OAuth or MySQL integration checks.
+Success prints `PASS: Fresh web runtime setup, local templates, restricted routes, static files and private logging passed.` followed by a PASS line for parallel HTTP requests, timeouts, private logs and per-thread cleanup. These checks do not replace the real OAuth or MySQL integration checks.
 
 ## 3. Start and open the preview
 

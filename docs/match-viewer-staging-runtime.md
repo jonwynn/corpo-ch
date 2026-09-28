@@ -105,7 +105,7 @@ Open a **second normal Windows PowerShell window**, called **Window 2** below. I
 | Discord bot | Not registered | Deferred; no Gateway connection or match messages |
 | Dedicated game server | Not registered | Deferred |
 
-The local launcher uses Django's development WSGI server. Supervisor controls the two named child processes. Both run as the normal Linux account, although its control command uses WSL's root account to access Supervisor. Neither program starts automatically just because its configuration exists.
+The local launcher uses Django's threaded development WSGI server. Concurrent connections prevent an idle browser connection from blocking the page; inactive socket reads close after ten seconds. Each connection retains Django's database cleanup. Supervisor controls the two named child processes. Both run as the normal Linux account, although its control command uses WSL's root account to access Supervisor. Neither program starts automatically just because its configuration exists.
 
 Paste into **Window 2, normal Windows PowerShell**. Estimated duration: **2–15 seconds**; no GPU. Keep Window 1 open. The example repository root can be changed if needed.
 
@@ -128,7 +128,7 @@ Paste into **Window 2, normal Windows PowerShell**. Estimated duration: **2–15
 }
 ```
 
-`RUNNING` means that process is active. `STOPPED` is normal before starting it. `FATAL`, `BACKOFF`, a missing program, or a missing private file needs diagnosis; do not run ordinary production commands to work around it.
+`RUNNING` means that process is active; it does not prove the website is responding. `STOPPED` is normal before starting it. `FATAL`, `BACKOFF`, a missing program, or a missing private file needs diagnosis; do not run ordinary production commands to work around it. A browser that keeps loading needs an HTTP check even when both processes report `RUNNING`.
 
 ## 5. Start the website and test login
 
