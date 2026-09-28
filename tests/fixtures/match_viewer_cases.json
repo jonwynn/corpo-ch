@@ -1,0 +1,3703 @@
+{
+    "contract_version": "1.0.0",
+    "scope": "Hand-authored source records and expected presentation answers. Integrity tests do not validate a production presenter, sporting rules, HTTP, browser, database or bot implementation.",
+    "defaults": {
+        "refresh": {
+            "active_interval_seconds": 2,
+            "completed_interval_seconds": 10,
+            "request_timeout_seconds": 8,
+            "active_stale_after_seconds": 10,
+            "completed_stale_after_seconds": 20,
+            "retry_delay_seconds": [2, 4, 8, 10],
+            "max_in_flight": 1
+        }
+    },
+    "cases": [
+        {
+            "case_id": "approved_opening",
+            "family_ids": ["V01"],
+            "description": "Four of six opening actions are recorded; no round exists.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "completed_ban_quota_blank_round",
+            "family_ids": ["V01", "V06"],
+            "description": "The last opening ban creates a blank first round; both panels still show initial actions.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": null,
+                        "chart_title": null,
+                        "picked_id": "player-a",
+                        "selection_kind": "unknown",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "awaiting_selection",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_selection", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "approved_first_pick",
+            "family_ids": ["V01", "V06"],
+            "description": "P1 selects Unwritten for the pending first round; choosing a chart awards no point.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "approved_second_pick",
+            "family_ids": ["V01", "V06"],
+            "description": "Fixture-only alternate ordering: P2 wins round one and then selects Trinity for round two.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-b",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 1],
+                "target": 4,
+                "remaining": [4, 3],
+                "current_round": "round-2",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p2"},
+                    {"round_id": "round-2", "number": 2, "state": "awaiting_result", "winner_slot": null}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", "round-2"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "target_best_of_3",
+            "family_ids": ["V02"],
+            "description": "Best of 3 has a target of 2; ban quota does not set the target.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 3,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 2,
+                "remaining": [2, 2],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "target_best_of_5",
+            "family_ids": ["V02"],
+            "description": "Best of 5 has a target of 3; ban quota does not set the target.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 5,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 3,
+                "remaining": [3, 3],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "target_best_of_9",
+            "family_ids": ["V02"],
+            "description": "Best of 9 has a target of 5; ban quota does not set the target.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 9,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 5,
+                "remaining": [5, 5],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "unsupported_even_target",
+            "family_ids": ["V02", "V08"],
+            "description": "An even round count is not an approved viewer profile; do not advertise a target.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 6,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "unsupported_rules",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": null,
+                "remaining": null,
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": ["unsupported_rules"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "outsider_winner",
+            "family_ids": ["V02", "V04"],
+            "description": "A winner outside the assigned participants cannot be credited to P2.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-outside",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "needs_review",
+                "slots": ["player-a", "player-b"],
+                "wins": null,
+                "target": 4,
+                "remaining": null,
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "needs_review", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": ["outsider_winner"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "reversed_initial_slots",
+            "family_ids": ["V03"],
+            "description": "Reversed seeding affects initial slots and every identity-based display.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": true,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-b",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-b", "player-a"],
+                "wins": [1, 0],
+                "target": 4,
+                "remaining": [3, 4],
+                "current_round": "round-2",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "awaiting_result", "winner_slot": null}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-2", "round-1"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "pinned_seed_correction",
+            "family_ids": ["V03"],
+            "description": "A seed correction changes badges without recoloring already pinned participants.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 8, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-b",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": [{"seed_id": "seed-a", "player_id": "player-a"}, {"seed_id": "seed-b", "player_id": "player-b"}]},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 1],
+                "target": 4,
+                "remaining": [4, 3],
+                "current_round": "round-2",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p2"},
+                    {"round_id": "round-2", "number": 2, "state": "awaiting_result", "winner_slot": null}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", "round-2"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "defer_does_not_swap_slots",
+            "family_ids": ["V03"],
+            "description": "Defer changes turn rules, not P1/P2 identity.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": true
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "missing_participant",
+            "family_ids": ["V04"],
+            "description": "One assigned seed is incomplete setup; unavailable score is not zero.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [{"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"}],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "setup_incomplete",
+                "slots": null,
+                "wins": null,
+                "target": 4,
+                "remaining": null,
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": null,
+                "quality": ["participant_count"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "null_player_relationship",
+            "family_ids": ["V04"],
+            "description": "A seed without a player cannot establish two competitor identities.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": null, "seed": 4, "name": null, "user_id": null}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "setup_incomplete",
+                "slots": null,
+                "wins": null,
+                "target": 4,
+                "remaining": null,
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": null,
+                "quality": ["missing_player"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "participant_without_account",
+            "family_ids": ["V04"],
+            "description": "An assigned tournament player can have a usable name and no linked website account.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": null}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "missing_rules",
+            "family_ids": ["V02", "V04"],
+            "description": "Missing rules hide the target rather than inventing four wins.",
+            "source": {
+                "match_id": "match-example",
+                "rules": null,
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "unsupported_rules",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": null,
+                "remaining": null,
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": ["missing_rules"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "saved_duplicate_bans_and_tiebreaker",
+            "family_ids": ["V05"],
+            "description": "A save removes duplicate effective bans, but a tiebreaker action without recorded rounds is inconsistent provenance requiring review.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "bansave",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-duplicate",
+                        "num": 1,
+                        "player_id": "player-b",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "save-1",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": true,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "tb-1", "num": 3, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "tiebreaker"}
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "needs_review",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": ["ban-1", "ban-duplicate", "save-1"],
+                "effective_ban_chart_ids": ["opus"],
+                "latest_picks": [null, null],
+                "quality": ["tiebreaker_provenance_inconsistent"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "legacy_unknown_ban_phase",
+            "family_ids": ["V05"],
+            "description": "Unknown phase is recorded history, never reconstructed opening history.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "unknown"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "unknown"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "unknown"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "unknown"
+                    }
+                ],
+                "rounds": [],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "recorded_actions",
+                "state": "opening_bans",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": null,
+                "round_history": [],
+                "opening_action_ids": [],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard"],
+                "latest_picks": [null, null],
+                "quality": ["action_phase_unknown"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "referee_selection",
+            "family_ids": ["V06", "V08"],
+            "description": "Verified referee selection_kind takes precedence over a retained legacy picked_id; no personal pick is claimed.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "referee",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "automatic_selection",
+            "family_ids": ["V06", "V08"],
+            "description": "Verified automatic selection_kind takes precedence over a retained legacy picked_id; no personal pick is claimed.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "automatic",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "legacy_unknown_picker",
+            "family_ids": ["V06"],
+            "description": "A retained chart with unknown selection provenance has no confirmed personal latest pick.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "unknown",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": [null, null],
+                "quality": ["selection_kind_unknown"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "deleted_selected_chart",
+            "family_ids": ["V06"],
+            "description": "Retained player-selection provenance distinguishes a deleted chart from an intentional clear.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": null,
+                        "chart_title": null,
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "needs_review",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "chart_unavailable", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": ["selected_chart_missing"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "undo_only_chart_selection",
+            "family_ids": ["V06", "V07"],
+            "description": "Intentional undo clears both chart and provenance; opening panels return.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": null,
+                        "chart_title": null,
+                        "picked_id": "player-a",
+                        "selection_kind": "unknown",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "initial_actions",
+                "state": "awaiting_selection",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_selection", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": [null, null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "corrected_first_winner",
+            "family_ids": ["V07"],
+            "description": "A corrected result changes the score and history without changing the current pick.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [1, 0],
+                "target": 4,
+                "remaining": [3, 4],
+                "current_round": "round-2",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "awaiting_result", "winner_slot": null}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", "round-2"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "undo_pending_round",
+            "family_ids": ["V07"],
+            "description": "Removing round two leaves a completed first round and no next round; wait for round creation while retaining its recorded win.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-b",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_next_round",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 1],
+                "target": 4,
+                "remaining": [4, 3],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p2"}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "undo_recorded_winner",
+            "family_ids": ["V07"],
+            "description": "Clearing the result and dependent next round restores a pending first result.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "blank_next_round_retains_latest_pick",
+            "family_ids": ["V06"],
+            "description": "A newly created empty next round does not revert the panels to initial bans.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-b",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": null,
+                        "chart_title": null,
+                        "picked_id": "player-b",
+                        "selection_kind": "unknown",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_selection",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 1],
+                "target": 4,
+                "remaining": [4, 3],
+                "current_round": "round-2",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p2"},
+                    {"round_id": "round-2", "number": 2, "state": "awaiting_selection", "winner_slot": null}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "target_reached_not_finalized",
+            "family_ids": ["V08", "V14"],
+            "description": "Official wins, referee finalization, evidence collection and export are separate states.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-3",
+                        "num": 3,
+                        "chart_id": "solus",
+                        "chart_title": "Solus",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-4",
+                        "num": 4,
+                        "chart_id": "hexaspark-fortress",
+                        "chart_title": "Hexaspark Fortress",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_finalization",
+                "slots": ["player-a", "player-b"],
+                "wins": [4, 0],
+                "target": 4,
+                "remaining": [0, 4],
+                "current_round": "round-4",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-3", "number": 3, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-4", "number": 4, "state": "result_recorded", "winner_slot": "p1"}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-3", "round-4"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "complete_before_screenshots",
+            "family_ids": ["V08", "V14"],
+            "description": "Official wins, referee finalization, evidence collection and export are separate states.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-3",
+                        "num": 3,
+                        "chart_id": "solus",
+                        "chart_title": "Solus",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-4",
+                        "num": 4,
+                        "chart_id": "hexaspark-fortress",
+                        "chart_title": "Hexaspark Fortress",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": true, "finished": false, "submitted": false, "winner_id": "player-a"},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "complete",
+                "slots": ["player-a", "player-b"],
+                "wins": [4, 0],
+                "target": 4,
+                "remaining": [0, 4],
+                "current_round": "round-4",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-3", "number": 3, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-4", "number": 4, "state": "result_recorded", "winner_slot": "p1"}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-3", "round-4"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "evidence_finished_not_exported",
+            "family_ids": ["V08", "V14"],
+            "description": "Official wins, referee finalization, evidence collection and export are separate states.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    },
+                    {
+                        "round_id": "round-3",
+                        "num": 3,
+                        "chart_id": "solus",
+                        "chart_title": "Solus",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    },
+                    {
+                        "round_id": "round-4",
+                        "num": 4,
+                        "chart_id": "hexaspark-fortress",
+                        "chart_title": "Hexaspark Fortress",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    }
+                ],
+                "lifecycle": {"complete": true, "finished": true, "submitted": false, "winner_id": "player-a"},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "complete",
+                "slots": ["player-a", "player-b"],
+                "wins": [4, 0],
+                "target": 4,
+                "remaining": [0, 4],
+                "current_round": "round-4",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-3", "number": 3, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-4", "number": 4, "state": "result_recorded", "winner_slot": "p1"}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-3", "round-4"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "export_recorded",
+            "family_ids": ["V08", "V14"],
+            "description": "Official wins, referee finalization, evidence collection and export are separate states.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    },
+                    {
+                        "round_id": "round-3",
+                        "num": 3,
+                        "chart_id": "solus",
+                        "chart_title": "Solus",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    },
+                    {
+                        "round_id": "round-4",
+                        "num": 4,
+                        "chart_id": "hexaspark-fortress",
+                        "chart_title": "Hexaspark Fortress",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": true,
+                        "metadata_kind": "v10"
+                    }
+                ],
+                "lifecycle": {"complete": true, "finished": true, "submitted": true, "winner_id": "player-a"},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "complete",
+                "slots": ["player-a", "player-b"],
+                "wins": [4, 0],
+                "target": 4,
+                "remaining": [0, 4],
+                "current_round": "round-4",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-3", "number": 3, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-4", "number": 4, "state": "result_recorded", "winner_slot": "p1"}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-3", "round-4"],
+                "quality": [],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "unrevealed_selected_chart",
+            "family_ids": ["V13"],
+            "description": "Staff access does not authorize unrevealed titles; public sharing elsewhere does not change selected-bracket scope.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": false,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": ["titles_withheld"],
+                "access": "allowed",
+                "hidden_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper", "unwritten"]
+            }
+        },
+        {
+            "case_id": "dummy_screenshot_metadata",
+            "family_ids": ["V14"],
+            "description": "Screenshot and dummy-metadata presence do not establish gameplay statistics or a round win.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": true,
+                        "metadata_kind": "dummy"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "awaiting_result",
+                "slots": ["player-a", "player-b"],
+                "wins": [0, 0],
+                "target": 4,
+                "remaining": [4, 4],
+                "current_round": "round-1",
+                "round_history": [{"round_id": "round-1", "number": 1, "state": "awaiting_result", "winner_slot": null}],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", null],
+                "quality": ["metadata_unverified"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "duplicate_round_number",
+            "family_ids": ["V04", "V06"],
+            "description": "Duplicate round numbering requires review; do not silently renumber or publish a guessed score.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-b",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 1,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": null,
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": false, "finished": false, "submitted": false, "winner_id": null},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "needs_review",
+                "slots": ["player-a", "player-b"],
+                "wins": null,
+                "target": 4,
+                "remaining": null,
+                "current_round": "round-2",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p2"},
+                    {"round_id": "round-2", "number": 1, "state": "awaiting_result", "winner_slot": null}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-1", "round-2"],
+                "quality": ["duplicate_round_number"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        },
+        {
+            "case_id": "final_winner_disagrees_with_score",
+            "family_ids": ["V07", "V08"],
+            "description": "Final match winner disagrees with recorded round wins; expose the inconsistency instead of changing the score.",
+            "source": {
+                "match_id": "match-example",
+                "rules": {
+                    "num_players": 2,
+                    "num_bans": 3,
+                    "num_rounds": 7,
+                    "pick_ruleset": "alternate",
+                    "ban_ruleset": "default",
+                    "fixture_only": true,
+                    "live_profile_approved": false,
+                    "tb_ruleset": "single"
+                },
+                "players": [
+                    {"seed_id": "seed-a", "player_id": "player-a", "seed": 3, "name": "GSBeast", "user_id": "user-a"},
+                    {"seed_id": "seed-b", "player_id": "player-b", "seed": 4, "name": "[LOS] Biscuit", "user_id": "user-b"}
+                ],
+                "rev_seeds": false,
+                "actions": [
+                    {
+                        "action_id": "ban-1",
+                        "num": 0,
+                        "player_id": "player-a",
+                        "chart_id": "magnolia",
+                        "chart_title": "Magnolia",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {"action_id": "ban-2", "num": 1, "player_id": "player-b", "chart_id": "opus", "chart_title": "Opus", "saved": false, "action_phase": "opening"},
+                    {
+                        "action_id": "ban-3",
+                        "num": 2,
+                        "player_id": "player-a",
+                        "chart_id": "pacesetter",
+                        "chart_title": "Pacesetter",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-4",
+                        "num": 3,
+                        "player_id": "player-b",
+                        "chart_id": "vanguard",
+                        "chart_title": "Vanguard",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-5",
+                        "num": 4,
+                        "player_id": "player-a",
+                        "chart_id": "glass-castle",
+                        "chart_title": "Glass Castle",
+                        "saved": false,
+                        "action_phase": "opening"
+                    },
+                    {
+                        "action_id": "ban-6",
+                        "num": 5,
+                        "player_id": "player-b",
+                        "chart_id": "gatekeeper",
+                        "chart_title": "Gatekeeper",
+                        "saved": false,
+                        "action_phase": "opening"
+                    }
+                ],
+                "rounds": [
+                    {
+                        "round_id": "round-1",
+                        "num": 1,
+                        "chart_id": "unwritten",
+                        "chart_title": "Unwritten",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-2",
+                        "num": 2,
+                        "chart_id": "trinity",
+                        "chart_title": "Trinity",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-3",
+                        "num": 3,
+                        "chart_id": "solus",
+                        "chart_title": "Solus",
+                        "picked_id": "player-a",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    },
+                    {
+                        "round_id": "round-4",
+                        "num": 4,
+                        "chart_id": "hexaspark-fortress",
+                        "chart_title": "Hexaspark Fortress",
+                        "picked_id": "player-b",
+                        "selection_kind": "player",
+                        "winner_id": "player-a",
+                        "screenshot_present": false,
+                        "metadata_kind": "absent"
+                    }
+                ],
+                "lifecycle": {"complete": true, "finished": false, "submitted": false, "winner_id": "player-b"},
+                "bracket_revealed": true,
+                "access": {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": true},
+                "defer": false
+            },
+            "request": {"pins": null},
+            "expected": {
+                "panel_mode": "latest_picks",
+                "state": "needs_review",
+                "slots": ["player-a", "player-b"],
+                "wins": [4, 0],
+                "target": 4,
+                "remaining": [0, 4],
+                "current_round": "round-4",
+                "round_history": [
+                    {"round_id": "round-1", "number": 1, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-2", "number": 2, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-3", "number": 3, "state": "result_recorded", "winner_slot": "p1"},
+                    {"round_id": "round-4", "number": 4, "state": "result_recorded", "winner_slot": "p1"}
+                ],
+                "opening_action_ids": ["ban-1", "ban-2", "ban-3", "ban-4", "ban-5", "ban-6"],
+                "effective_ban_chart_ids": ["magnolia", "opus", "pacesetter", "vanguard", "glass-castle", "gatekeeper"],
+                "latest_picks": ["round-3", "round-4"],
+                "quality": ["final_winner_mismatch"],
+                "access": "allowed",
+                "hidden_chart_ids": []
+            }
+        }
+    ],
+    "scenario_examples": [
+        {
+            "scenario_id": "initial_refresh_failure",
+            "family_ids": ["V09"],
+            "input": {"last_good_wins": null, "response": "timeout"},
+            "expected": {"visible_wins": null, "state": "load_failed", "replace_match": false}
+        },
+        {
+            "scenario_id": "failed_refresh_keeps_score",
+            "family_ids": ["V09"],
+            "input": {"last_good_wins": [2, 1], "response": "http_500"},
+            "expected": {"visible_wins": [2, 1], "state": "refresh_failed", "replace_match": false}
+        },
+        {
+            "scenario_id": "correction_after_reconnect",
+            "family_ids": ["V07", "V09"],
+            "input": {"last_good_wins": [2, 1], "response_wins": [1, 1], "response": "valid"},
+            "expected": {"visible_wins": [1, 1], "state": "current", "replace_match": true}
+        },
+        {
+            "scenario_id": "unchanged_digest",
+            "family_ids": ["V09"],
+            "input": {"old_digest": "same", "new_digest": "same", "response": "valid"},
+            "expected": {"replace_match": false, "update_freshness": true}
+        },
+        {
+            "scenario_id": "late_response_from_old_match",
+            "family_ids": ["V10"],
+            "input": {"selected_match_id": "match-b", "active_generation": 2, "response_match_id": "match-a", "response_generation": 1},
+            "expected": {"install_response": false}
+        },
+        {"scenario_id": "completed_cadence", "family_ids": ["V09", "V10"], "input": {"completed": true, "seconds_since_success": 10}, "expected": {"stale": false}},
+        {
+            "scenario_id": "hidden_tab_and_resume",
+            "family_ids": ["V10"],
+            "input": {"hidden": true, "then_resumed": true, "request_already_pending": false},
+            "expected": {"hidden_polling": false, "request_on_resume": true, "max_in_flight": 1}
+        },
+        {
+            "scenario_id": "invalid_or_changed_slot_pins",
+            "family_ids": ["V03", "V10"],
+            "input": {"pins": ["player-a", "player-outside"], "assigned_players": ["player-a", "player-b"]},
+            "expected": {"state": "setup_changed", "install_response": false}
+        },
+        {
+            "scenario_id": "long_escaped_names",
+            "family_ids": ["V11"],
+            "input": {
+                "player_name": "[LOS] <script>alert(1)</script> 長い名前🎸",
+                "chart_title": "VeryLongUnbrokenChartTitleWithNoConvenientWrapPoint1234567890",
+                "viewport_widths": [320, 390, 470, 650, 1024],
+                "zoom_percent": 200
+            },
+            "expected": {"preserve_full_name": true, "interpret_markup": false, "horizontal_page_overflow": false}
+        },
+        {
+            "scenario_id": "details_survive_refresh",
+            "family_ids": ["V12"],
+            "input": {"details_open": true, "new_detail_rows": ["ban-1", "ban-2"], "focused_row_removed": false},
+            "expected": {"details_open": true, "detail_rows": ["ban-1", "ban-2"], "steal_focus": false}
+        },
+        {
+            "scenario_id": "saved_theme_and_forced_colors",
+            "family_ids": ["V12"],
+            "input": {"saved_theme": "light", "forced_colors": true, "storage_available": false},
+            "expected": {"override_forced_colors": false, "identity_text": ["P1", "P2"], "color_only_identity": false}
+        },
+        {
+            "scenario_id": "staff_access_matrix",
+            "family_ids": ["V13"],
+            "input": {"required_same_guild": true},
+            "examples": [
+                {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "admin", "is_staff": false, "assigned_referee": false, "allowed": true},
+                {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": false, "allowed": true},
+                {"authenticated": true, "active": true, "superuser": true, "same_guild_role": null, "is_staff": true, "assigned_referee": false, "allowed": true},
+                {"authenticated": true, "active": false, "superuser": true, "same_guild_role": "admin", "is_staff": true, "assigned_referee": true, "allowed": false},
+                {"authenticated": true, "active": false, "superuser": false, "same_guild_role": "referee", "is_staff": true, "assigned_referee": true, "allowed": false},
+                {"authenticated": false, "active": true, "superuser": false, "same_guild_role": "referee", "is_staff": false, "assigned_referee": false, "allowed": false},
+                {"authenticated": true, "active": true, "superuser": false, "same_guild_role": null, "is_staff": true, "assigned_referee": false, "allowed": false},
+                {"authenticated": true, "active": true, "superuser": false, "same_guild_role": null, "is_staff": false, "assigned_referee": true, "allowed": false},
+                {
+                    "authenticated": true,
+                    "active": true,
+                    "superuser": false,
+                    "same_guild_role": "other_guild_admin",
+                    "is_staff": true,
+                    "assigned_referee": true,
+                    "allowed": false
+                },
+                {"authenticated": true, "active": true, "superuser": false, "same_guild_role": "revoked", "is_staff": true, "assigned_referee": true, "allowed": false}
+            ],
+            "expected": {"denial_clears_protected_content": true, "check_every_request": true}
+        },
+        {
+            "scenario_id": "evidence_presence_only",
+            "family_ids": ["V14"],
+            "input": {
+                "metadata_kinds": ["absent", "empty", "malformed", "v6", "v10", "manual", "dummy", "reversed_players", "shared_aliases", "missing_context"],
+                "screenshot_present_values": [false, true]
+            },
+            "expected": {"publish_gameplay_metrics": false, "missing_metric_value": null, "change_official_wins": false, "presence_proves_file_readable": false}
+        },
+        {
+            "scenario_id": "compatibility_is_not_yet_verified",
+            "family_ids": ["V15"],
+            "input": {"stage": 1},
+            "expected": {"production_tests_run": false, "api_shape_changes": false, "bot_connected": false, "database_migrations": false}
+        }
+    ]
+}

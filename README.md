@@ -3,6 +3,18 @@ The Corpo CH Django App/Discord Bot
 
 Clone Hero Tournament organizer and tools.
 
+## Fork development: live match viewer
+
+Development version: **1.7.0-beta.1**, unreleased.
+
+This fork is preparing a read-only live match viewer for tournament staff on the existing website. The first milestone adds the data contract, hand-authored match fixtures and isolated foundation tests. The viewer page is not implemented yet.
+
+- [Viewer contract and rule decisions](docs/match-viewer-contract.md)
+- [Foundation tests and validation limits](docs/match-viewer-development.md)
+- [Changelog](CHANGELOG.md)
+
+The planned viewer uses recorded match results, bans and chart selections. Continuous in-song statistics have no verified data source. Production rule changes require confirmation of the first tournament's rule profile.
+
 ## Links
 
 Access [Corpo CH's main site](https://corpo-ch.org)
@@ -65,7 +77,14 @@ Setup periodic tasks for management in admin UI:
 More to come!
 
 ## Credits
+
+The original Corpo CH implementation is maintained by [Jetsurf and contributors](https://github.com/Jetsurf/corpo-ch). The live match viewer work is developed in this fork.
+
+Created by [@jonw_CH on Twitch](https://www.twitch.tv/jonw_CH).
+
  - All Contributors
  - The CH Competitive Scene
  - [CHOpt](https://github.com/GenericMadScientist/CHOpt) [CH Steg Reader](https://github.com/GenericMadScientist/CH-Steg-Reader) - [@GenericMadScientist](https://github.com/GenericMadScientist)
  - [Hydra](https://github.com/DragonDelgar/hydra) - [@DragonDelgar](https://github.com/DragonDelgar)
+
+If you enjoy using this tool, or find it useful, please consider subscribing to my Twitch channel. This will help motivate me to make more cool things for you guys! :)
