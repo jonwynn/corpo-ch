@@ -31,7 +31,7 @@ Verify that the deployment serves `corpoch/match_viewer.css` and `corpoch/match_
 
 ## Verify MySQL before approving its gate
 
-The five native checks passed on the prepared local **MySQL 8.4.11/InnoDB** instance with **mysqlclient 2.3.0**. The database was removed and the server stopped afterward. This verifies that local configuration, not the deployment's connection settings or load. The MySQL gate remains off until deployment-specific checks also pass.
+The five native checks passed on the prepared local **MySQL 8.4.11/InnoDB** instance with **mysqlclient 2.3.0**, including a standalone PowerShell run after relocating the instance outside AppData. The database was removed and the server stopped afterward. This verifies that local configuration, not the deployment's connection settings or load. The MySQL gate remains off until deployment-specific checks also pass.
 
 On the prepared development PC, use [step 5 of the local guide](match-viewer-development.md#5-run-the-prepared-local-mysql-checks). That command handles startup, encrypted credentials and shutdown on port **3307**. The manual block below is for another separately prepared local test server; it does not install or start MySQL.
 

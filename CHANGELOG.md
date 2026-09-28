@@ -49,6 +49,6 @@ A user-run verification on `2e32fae` confirmed the same passing counts and succe
 
 Five native MySQL checks pass on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 23.083 seconds with normal profile loading. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
 
-The prepared instance was relocated outside AppData after confirming Windows app-private redirection. Its requested and physical paths now match, and the development-app rerun passed in 20.971 seconds. Standalone PowerShell confirmation remains pending.
+The prepared instance was relocated outside AppData after confirming Windows app-private redirection. Its requested and physical paths now match, and the development-app rerun passed in 20.971 seconds. A standalone PowerShell run also passed all five tests in 1.165 seconds for the test bodies, removed the disposable database and stopped the server. Local setup is verified from both environments; deployment settings and viewer gates remain unchanged.
 
 Deployment-specific MySQL checks, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

@@ -9,7 +9,7 @@ Version **1.7.0-beta.1** is unreleased. The staff website viewer, CORP Cup actio
 | 3. Layout | Navy, blue and coral viewer with large names, opening actions/latest picks, centered score, dynamic target, history and expandable details. |
 | 4. Staff reader | Paginated selection, scoped GET pages/fragments, fresh account checks, chart redaction and shared history validation. |
 | 5. Refresh | One request at a time, cancellation, pinned player slots, preserved details, stale/error states and access-loss clearing. |
-| 6. Verification | Isolated checks, user-run local verification and five native MySQL checks pass. General preview behavior is confirmed; detailed accessibility and staging integration remain gates. |
+| 6. Verification | Isolated checks, user-run local verification and five native MySQL checks pass, including a standalone PowerShell run after the folder repair. General preview behavior is confirmed; detailed accessibility and staging integration remain gates. |
 | 7. Rollout | Not performed. Follow the [rollout checklist](match-viewer-rollout.md). |
 
 ## 1. Open PowerShell
@@ -268,7 +268,7 @@ Focused browser checks covered all three approved visual states, keyboard-opened
 
 The five native checks now pass on **MySQL 8.4.11/InnoDB with mysqlclient 2.3.0**. They cover default-off gates, snapshot consistency during a concurrent result/next-round commit, competing actions, connection/isolation cleanup, and fresh staff/chart-visibility checks. The runner applied the real migration chain to its disposable database, reported no Django system-check issues, and removed that database. The prepared-instance wrapper passed in Windows PowerShell 5.1 with normal profile loading: **1.131 seconds for the five test bodies; 23.083 seconds for the full start/migrate/check/cleanup/stop command**. Occupied-port refusal, shutdown after a simulated checker failure, and restoration of all five prior environment values also passed. These checks establish the local test configuration; deployment-specific concurrency, connection settings and load still require verification. `MATCH_VIEWER_MYSQL_VERIFIED` remains off by default.
 
-After moving the stopped instance outside AppData, its requested and physical disk paths matched. The development-app rerun passed all five native checks and completed startup through shutdown in **20.971 seconds**. Confirmation from a standalone PowerShell window remains pending; complete step 5 there before treating local setup as accepted.
+After moving the stopped instance outside AppData, its requested and physical disk paths matched. The development-app rerun passed all five native checks and completed startup through shutdown in **20.971 seconds**. A subsequent standalone PowerShell run confirmed access to the relocated folder, passed all five native tests in **1.165 seconds for the test bodies**, reported no Django system-check issues, removed the disposable database and stopped the server. Local MySQL setup is verified from both environments; deployment settings and viewer gates remain unchanged.
 
 OAuth login, live Discord callbacks, screenshot decoding/storage, Sheets publication and ordinary service startup remain manual integration gates. Hydra imports are delayed until its analysis operation; a missing submodule produces an explicit operation error. Actual Hydra execution is unverified. The declared Python minimum is not a tested compatibility guarantee; use the verified runtime until another version passes the same checks.
 
