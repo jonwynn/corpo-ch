@@ -337,12 +337,12 @@ class GSheets():
 	def setup_qualifier_sheet(self) -> gspread.Worksheet:
 		print(f"Creating qualifier {self._submission.qualifier} worksheet in sheet {self._url}")
 		if not self._final:
-			ws = self._sheet.add_worksheet(title=f"{self._submission.qualifier} - Data", rows=2, cols=13)
+			ws = self._sheet.add_worksheet(title=f"{self._submission.qualifier} - Data", rows=2, cols=15)
 		else:
-			ws = self._sheet.add_worksheet(title=f"{self._submission.qualifier} - Final Top Scores", rows=1, cols=13)
+			ws = self._sheet.add_worksheet(title=f"{self._submission.qualifier} - Final Top Scores", rows=2, cols=15)
 		ws.update([["Qualifier ID", "Discord Name", "Clone Hero Name", "Score", "Notes Missed", "Notes Hit", "Is FC", "Gamepad", "Overstrums", "Ghosts", "Phrases Hit", "Submission Timestamp", "Screenshot Timestamp", "Screenshot", "Game Version" ]], "A1:O1")
 		
-		ws.format("A1:N1", self._format_header)
+		ws.format("A1:O1", self._format_header)
 		ws.freeze(1)
 		return ws
 
@@ -402,13 +402,36 @@ class GSheets():
 		self._ws.append_rows(self.ban_lines)
 
 	def submit_players(self) -> bool:
-		rows = self._ws.row_count
-		self._ws.append_rows(self.player_lines, value_input_option="USER_ENTERED")
-		self._ws.delete_rows(2, rows)
+		"""Replaces roster values while preserving the header and other columns."""
+		lines = self.player_lines
+		rows = []
+		for line in lines:
+			if len(line) != 4:
+				raise ValueError("Player export requires four columns per player.")
+			values = [str(value) if value is not None else "" for value in line]
+			# Legacy rows prefix Discord IDs for USER_ENTERED. Explicit strings
+			# need no apostrophe and cannot execute formula-like player names.
+			values[3] = values[3].removeprefix("'")
+			rows.append({"values": [{"userEnteredValue": {"stringValue": value}} for value in values]})
+		worksheet = self._sheet.get_worksheet_by_id(self._ws.id)
+		requests = []
+		additional_rows = len(rows) + 1 - worksheet.row_count
+		if additional_rows > 0:
+			requests.append({"appendDimension": {
+				"sheetId": worksheet.id, "dimension": "ROWS", "length": additional_rows,
+			}})
+		# updateCells clears uncovered values within the requested A2:D range.
+		# Keeping both operations in one batch avoids a clear-before-write gap.
+		requests.append({"updateCells": {
+			"range": {"sheetId": worksheet.id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 4},
+			"rows": rows,
+			"fields": "userEnteredValue",
+		}})
+		self._sheet.batch_update({"requests": requests})
 
 	def update_qualifier(self):
 		cell = self._ws.find(self._submission.id)
-		self._ws.update([self.qualifier_line], f"A{cell.row}:N{cell.row}", raw=False)
+		self._ws.update([self.qualifier_line], f"A{cell.row}:O{cell.row}", raw=False)
 
 	def update_match(self):
 		cell = self._ws.find(self._submission.id)

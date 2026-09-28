@@ -12,57 +12,181 @@ Version **1.7.0-beta.1** is unreleased. The staff website viewer, CORP Cup actio
 | 6. Verification | Isolated Python/JavaScript checks and focused browser checks pass. Human visual acceptance and real service/database checks remain gates. |
 | 7. Rollout | Not performed. Follow the [rollout checklist](match-viewer-rollout.md). |
 
-## Inspect the viewer locally
+## 1. Open PowerShell
 
-Use PowerShell from the repository root with the existing application virtual environment. Estimated startup: 2–10 seconds; CPU only, no GPU. The process stays running until Ctrl+C.
+Open the Windows Start menu, type **Windows PowerShell**, and open it normally. Administrator access is not needed. If using Windows Terminal, choose a **PowerShell** tab, not Command Prompt.
 
-```powershell
-.\.venv\Scripts\python.exe -m tests.viewer_preview
-```
+Copy a complete code block below, paste it into PowerShell, and press **Enter**. If Windows Terminal asks about pasting several lines, confirm the paste. Copy the code inside the box, without the surrounding backticks. Lines beginning with `#` are explanations and can be pasted too.
 
-Open [the simulated viewer](http://127.0.0.1:8765/?case=live_example). Its controls move between opening bans, the first pick and a later round, or simulate a failed refresh/access loss. The [initial fixture page](http://127.0.0.1:8765/?case=approved_opening) also links to individual cases. Use `--port` with the preview command if port 8765 is occupied.
+These blocks use `C:\git\corpo-ch` as the checkout folder. That folder is the **repository root**: it contains `README.md`, `manage.py`, `tests`, and `corpoch`. If your checkout is elsewhere, replace only that folder path in each block.
 
-The preview renders the actual templates and assets with in-memory example data. It opens a loopback HTTP listener, but does not connect to a database, Discord, OAuth, storage providers or Sheets. It does not exercise the production reader or authentication. Example controls are confined to this test server.
+The local checks use the prepared `.venv` folder, which contains this application's Python and dependencies. No activation command, execution-policy change, `.env` file, Discord account, or MySQL server is needed for steps 2–4. This is a verification guide for an existing prepared checkout; a fresh clone without its dependencies needs setup first.
 
-The simulated viewer follows CORP Cup: higher seed first, then the previous song's loser. Its later-round example shows P1 winning round 1 and P2 picking round 2. The original visual fixtures remain available for comparison; their P2-win/P2-pick sequence uses a generic alternating-pick profile. Both profiles share the same layout.
+## 2. Run all checks that work without external services
 
-## Run isolated verification
-
-Run each entry point in a fresh process. PowerShell, estimated 1–5 seconds; CPU only, no GPU:
+Paste this entire block into **PowerShell**. Estimated duration: **15–60 seconds** with the existing dependencies; CPU and temporary disk storage only, no GPU. Slower storage or background programs can increase the time. The block enters the repository, checks the branch and tools, and stops if any check fails. It does not switch branches, install software, or modify live match records.
 
 ```powershell
-.\.venv\Scripts\python.exe -m tests.viewer_test_bootstrap
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        throw 'Git was not found. Stop here and report this message.'
+    }
+    $viewer_branch = git branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
+        throw 'This folder is not on jons-tree-branch. Stop here; do not reset or switch it.'
+    }
+    if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) {
+        throw 'The prepared Python environment is missing. Stop here and report this message.'
+    }
+    $viewer_node_command = Get-Command node -ErrorAction SilentlyContinue
+    $viewer_node = if ($viewer_node_command) {
+        $viewer_node_command.Source
+    } else {
+        Join-Path $env:ProgramFiles 'nodejs\node.exe'
+    }
+    if (-not (Test-Path -LiteralPath $viewer_node)) {
+        throw 'Node.js was not found. Stop here and report this message.'
+    }
+
+    Write-Host 'Repository and branch confirmed. Runtime versions:'
+    .\.venv\Scripts\python.exe --version
+    if ($LASTEXITCODE -ne 0) { throw 'Python could not start.' }
+    & $viewer_node --version
+    if ($LASTEXITCODE -ne 0) { throw 'Node.js could not start.' }
+    git log -1 --oneline
+    if ($LASTEXITCODE -ne 0) { throw 'Could not read the current commit.' }
+
+    Write-Host 'CHECK 1 OF 3: foundation and isolation checks'
+    .\.venv\Scripts\python.exe -m tests.viewer_test_bootstrap
+    if ($LASTEXITCODE -ne 0) { throw 'Foundation checks failed. Stop here and report the error.' }
+
+    Write-Host 'CHECK 2 OF 3: application checks with a temporary database'
+    $viewer_test_modules = @(
+        'tests.test_model_test_bootstrap',
+        'tests.model_test_corp_cup_rules',
+        'tests.model_test_match_viewer',
+        'tests.model_test_match_actions',
+        'tests.model_test_match_bot',
+        'tests.model_test_match_admin',
+        'tests.model_test_admin_imports',
+        'tests.model_test_match_publication',
+        'tests.model_test_match_viewer_templates',
+        'tests.model_test_match_viewer_views',
+        'tests.model_test_upstream_fixes',
+        'tests.model_test_upstream_providers'
+    )
+    .\.venv\Scripts\python.exe -m tests.viewer_model_test_bootstrap @viewer_test_modules
+    if ($LASTEXITCODE -ne 0) { throw 'Application checks failed. Stop here and report the error.' }
+
+    Write-Host 'CHECK 3 OF 3: browser refresh logic'
+    & $viewer_node --test tests/match_viewer_refresh.test.js
+    if ($LASTEXITCODE -ne 0) { throw 'Refresh checks failed. Stop here and report the error.' }
+
+    Write-Host 'PASS: All three local automated check groups passed.' -ForegroundColor Green
+    Write-Host 'Next: run the preview and complete the visual checklist.'
+}
 ```
 
-The foundation runner checks fixture answers and isolation boundaries without importing the application. Model checks are explicitly skipped by this runner.
+The text will scroll while tests run. Wait until the normal PowerShell prompt returns. **Success is the final `PASS: All three local automated check groups passed.` message.** An error followed by the prompt is not a pass. Do not paste the next block while tests are still running.
 
-PowerShell, estimated 5–30 seconds with installed dependencies; CPU only, no GPU. This application suite applies the real migration chain to a disposable SQLite database and deletes it afterward:
+Expected results for this version:
+
+| Check | Successful result | What it verifies |
+|---|---|---|
+| Foundation | `Ran 66 tests` and `OK (skipped=9)` | 57 executed checks. The nine skips are deliberate: those checks require the separate application runner. |
+| Application | `Ran 190 tests` and `OK` | Real model/migration behavior in a temporary SQLite database, plus rules, bot/admin/provider seams, presentation and access checks. |
+| Refresh | `tests 12`, `pass 12`, `fail 0` | Request scheduling, timeouts, stale responses, retries and related browser logic. |
+
+`Creating test database`, `Applying ... OK`, and `Destroying test database` are normal application-test messages. They refer to a generated temporary database, not your tournament database. Counts may increase in later commits; keep the commit line when reporting results.
+
+Each Python runner starts a fresh process. The runners clear deployment variables, block dotenv reads, and restrict writes to temporary storage. They reject external network/process operations and deployment database clients. Service seams are mocked. These checks do not prove that live Discord, OAuth, storage or Sheets work, and the guards are not an operating-system sandbox.
+
+## 3. Start and open the preview
+
+Paste this block into **PowerShell** after step 2 succeeds. Estimated startup: **2–10 seconds**; CPU only, no GPU. This command intentionally keeps running until you press **Ctrl+C** in its PowerShell window.
 
 ```powershell
-$viewer_test_modules = @(
-    "tests.test_model_test_bootstrap",
-    "tests.model_test_corp_cup_rules",
-    "tests.model_test_match_viewer",
-    "tests.model_test_match_actions",
-    "tests.model_test_match_bot",
-    "tests.model_test_match_admin",
-    "tests.model_test_admin_imports",
-    "tests.model_test_match_publication",
-    "tests.model_test_match_viewer_templates",
-    "tests.model_test_match_viewer_views"
-)
-.\.venv\Scripts\python.exe -m tests.viewer_model_test_bootstrap @viewer_test_modules
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    $viewer_branch = git branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
+        throw 'This folder is not on jons-tree-branch. Stop here.'
+    }
+    .\.venv\Scripts\python.exe -m tests.viewer_preview
+    if ($LASTEXITCODE -ne 0) { throw 'The preview could not start. See the troubleshooting table below.' }
+}
 ```
 
-Both bootstraps clear deployment environment variables, disable dotenv loading, provide dummy settings and restrict file writes to temporary storage. They reject external network/process operations and native deployment database clients. Provider/task seams are isolated in the relevant tests. Windows Django setup substitutes the known OS family for Celery's subprocess-based platform probe. These are regression guards, not an operating-system sandbox or proof of normal service startup.
+Success prints **`Example viewer: http://127.0.0.1:8765/?case=live_example`** and **`Only illustrative fixtures are served. Ctrl+C stops the preview.`** A missing PowerShell prompt at this point is normal: the preview is running. Leave that window open.
 
-PowerShell with Node.js available on PATH, estimated 1–5 seconds; CPU only, no GPU:
+Open [the simulated viewer](http://127.0.0.1:8765/?case=live_example), or open a **second PowerShell window** and paste the block below. Estimated duration: **1–5 seconds**; no GPU. `Start-Process` opens the page in your normal browser; it does not start the preview server.
 
 ```powershell
-node --test tests/match_viewer_refresh.test.js
+Set-Location -LiteralPath 'C:\git\corpo-ch' -ErrorAction Stop
+Start-Process 'http://127.0.0.1:8765/?case=live_example'
 ```
 
-The 12 refresh-controller checks cover one in-flight request, stale content, timeouts, retries, late responses, tab visibility, assignment changes and operator polling disable. They do not replace browser layout or DOM acceptance checks.
+The preview renders the actual templates and styles with example data stored in memory. It connects to no database, Discord, OAuth, storage provider or Sheets destination. The buttons above the viewer are test controls; they are absent from the production viewer. The **Corpo CH** link is part of the production header, but the preview does not serve the rest of the website.
+
+## 4. Check the viewer by eye
+
+Keep the browser tab visible while testing. Updates normally arrive within two seconds; allow **up to 15 seconds** after a simulated failure because retries become less frequent. The complete checklist takes about **5–10 minutes**. Automated tests cannot confirm that the colors are distinguishable to you.
+
+| Action | Expected result |
+|---|---|
+| Click **Initial bans** | Both panels show their opening bans, the score is `0:0`, and no rounds are recorded. |
+| Click **First pick** | Both panels switch to latest picks. P1 has **Unwritten**, P2 has no pick yet, round 1 is pending, and the score stays `0:0`. |
+| Open **Match details**, then click **Later round** | Details stay open and update. P1 won round 1, P2 picked **Trinity** for round 2, and the score is `1:0`. This follows CORP loser-pick order. |
+| Click **Simulate failure** | The `1:0` score remains visible. A retry/stale message appears; failure must not turn the score into zero. |
+| Click **First pick** again | Updates recover and show the corrected `0:0` example, with round 1 pending. |
+| Click **Simulate access loss** | The player names and score disappear. Polling stops. To resume, click **Initial bans**, wait two seconds, then refresh the browser page. |
+| Change **Appearance**, then refresh | The selected theme remains selected. Return to whichever theme you prefer afterward. |
+| Resize the browser to a narrow window | Text wraps and the layout remains usable without horizontal scrolling. Check the [long-name example](http://127.0.0.1:8765/?case=long_names) too. |
+| Open the browser menu and set **Zoom** to **200%**, then use **Tab** and **Enter** | Text and controls remain reachable, focus stays visible, and Match details opens by keyboard. **Ctrl+0** restores 100% zoom; use the menu to restore a different previous setting. |
+| Test a Windows contrast theme if you use one | Names, scores, controls and focus remain readable. Restore your previous Windows setting afterward. |
+
+Also compare the [original opening fixture](http://127.0.0.1:8765/?case=approved_opening) and its linked states with the approved design. The original P2-win/P2-pick fixture uses a generic alternating-pick profile for visual comparison; the interactive CORP example correctly shows P1 winning before P2 picks.
+
+To stop the preview, return to its PowerShell window and press **Ctrl+C** once. Closing the browser alone does not stop it. Restart with step 3 whenever needed.
+
+## Troubleshooting the local checks
+
+| Message or symptom | Next action |
+|---|---|
+| `Cannot find path` | The repository is not at the listed folder. Locate the folder containing `manage.py` and use that path in `Set-Location`. Do not create an empty folder to bypass the error. |
+| Wrong branch message | Stop and report it. The guide deliberately does not switch branches or discard work. |
+| Missing Python environment, `ModuleNotFoundError`, or missing Node.js | Stop and report the exact message. Dependency setup is needed; no activation or execution-policy change will fix missing dependencies. |
+| `FAILED`, `ERROR`, or no final `PASS` message | Keep the failing output and the commit line from the start. Report which check stopped. Do not proceed to deployment. |
+| Browser says it cannot connect | Confirm the preview PowerShell window is still running and use the exact printed URL. |
+| Port error such as `WinError 10048` | Another process is using port 8765. If you started that preview, press **Ctrl+C** in its original PowerShell window and restart it. Otherwise use the alternate port below. Do not terminate an unidentified process. An older preview process can still show files from before an update. |
+| Colors or text are difficult to read | Record which state, browser width/zoom and theme you used, and share a screenshot of the example data. |
+
+For an occupied port, paste this alternate block into **PowerShell**. Estimated startup: **2–10 seconds**; CPU only, no GPU. Leave it running and open [the alternate preview](http://127.0.0.1:8766/?case=live_example). Use port **8766** in any other preview links while this server is running.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    $viewer_branch = git branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
+        throw 'This folder is not on jons-tree-branch. Stop here.'
+    }
+    .\.venv\Scripts\python.exe -m tests.viewer_preview --port 8766
+    if ($LASTEXITCODE -ne 0) { throw 'The alternate preview could not start. Report the error.' }
+}
+```
+
+## 5. Separate checks that require a test server or accounts
+
+Steps 2–4 complete the local automated and visual checks. They do **not** complete deployment approval.
+
+The [MySQL instructions](match-viewer-rollout.md#verify-mysql-before-approving-its-gate) include a separate copy-and-paste command. Run it only after a dedicated local MySQL test server and test account are ready. If you do not have that server/account, record **MySQL not yet tested** and ask the maintainer to arrange them. The command cannot install a server or supply credentials.
+
+Real OAuth login, Discord referee actions, screenshot processing and Sheets export also require test accounts and destinations. Those are covered in the [staging checklist](match-viewer-rollout.md). Do not run the README's self-hosting or deployment migration commands merely to complete this local guide. All production viewer switches remain off until the separate rollout checks pass.
 
 ## Implementation boundaries
 
@@ -75,11 +199,30 @@ The 12 refresh-controller checks cover one in-flight request, stale content, tim
 
 The presentation digest compares content; it is not a sequence number. Browser generation checks reject superseded responses. Known results survive retryable failures, while access loss clears the match. Unknown scores remain unavailable instead of becoming zero. Screenshots contribute presence indicators, never live gameplay telemetry or automatic match points.
 
+## Upstream production-fix review
+
+The maintainer's [production-fix commit `a866682`](https://github.com/Jetsurf/corpo-ch/commit/a866682abe9db80bc195120051f1bdfd1d0381e1) was reviewed against this fork. Its changes were applied selectively to preserve the CORP action services and delayed-publication checks.
+
+| Upstream change | Integration result |
+|---|---|
+| Missing admin imports | Already applied and covered by three isolated checks. |
+| Channel/role admin search | Applied: search uses the stored `id` field rather than a display method. |
+| Continue bot startup after a failed match restore | Applied with exception logging and removal of partially registered failed state. Other matches and background loops can start. |
+| Qualifier modifier message | Applied the wording correction. |
+| Qualifier export width | Applied the `A:O` update range and aligned new-sheet dimensions/header formatting with all 15 values. |
+| Player roster export | Adapted: replace roster values in `A2:D` in one batch, clear obsolete values, preserve the header/other columns, and keep Discord IDs and names as literal text. `append_rows` with `OVERWRITE` still appends after the table and does not replace a roster. |
+| Remove frozen headers / use semicolons in match hyperlink formulas | Deferred pending the test destination's layout and locale checks. These changes are not required by the viewer. |
+| Legacy tiebreaker Back condition | Deferred. Its condition would discard some manually selected non-`bansave` rounds rather than clearing the selection. A pre-existing `pickable_tb` expression also blocks that legacy path. Both require a separate legacy-rule repair; CORP uses its independently tested locked undo path. |
+
+The spreadsheet changes have isolated request/behavior checks; actual Sheets execution remains a staging gate. The replacement follows the Sheets API's [range update behavior](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/request#UpdateCellsRequest) and [atomic batch contract](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/batchUpdate). This review does not claim a full upstream merge or a repair of all legacy rule profiles.
+
 ## Evidence and remaining limits
 
-Local verification uses Windows, CPython 3.14.7, Django 6.0.8 and Celery 5.6.3. The combined guarded application run passed **174 tests in 21.949 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**.
+The exact step 2 block passed in Windows PowerShell **5.1.26100.9444**, using CPython 3.14.7, Django 6.0.8, Celery 5.6.3 and Node.js 24.19.0. Its combined guarded application run passed **190 tests in 22.652 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**. All seven PowerShell blocks in the development/rollout guides passed syntax parsing in Windows PowerShell 5.1; the MySQL and deployment commands were not executed.
 
 The application suite includes three admin regression checks for the maintainer's missing-import fixes. They exercise the actual admin methods with outbound task dispatch mocked; no Discord update is sent.
+
+Sixteen further upstream regressions cover channel/role search, match restoration after a failure, and provider behavior. Provider checks execute production class definitions with mocked outbound operations; they do not validate ordinary provider-module startup, credentials or remote API acceptance.
 
 These tests cover the real SQLite schema, sporting transitions, delayed callbacks, admin/bot integration seams, privacy, templates and recorded-state projection. Selected-reader query counts remain bounded when unrelated matches are added. Production latency, concurrent load and browser payload budgets still need measurement.
 

@@ -10,7 +10,7 @@ Development version: **1.7.0-beta.1**, unreleased.
 This fork adds a read-only live match viewer for tournament staff on the existing website. It shows recorded bans/saves, chart picks, round winners and match progress in the approved navy, blue and coral layout. Large player names, stable player colors and a dynamic win target keep the main display compact.
 
 - [Viewer contract and rule decisions](docs/match-viewer-contract.md)
-- [Local preview, tests and validation limits](docs/match-viewer-development.md)
+- [Beginner PowerShell guide: local checks and preview](docs/match-viewer-development.md)
 - [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
 - [Changelog](CHANGELOG.md)
 

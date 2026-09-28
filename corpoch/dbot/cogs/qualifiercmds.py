@@ -219,7 +219,7 @@ class DiscordQualifierView(discord.ui.View):
 			print(f"QUALIFIER: {self.qualifier}: {self.ctx.user.display_name} screenshot speed {steg.output.playback_speed}% does not match speed of qualifier: {playedChart.speed}%")
 			await interaction.followup.send(f"Uploaded screenshot speed ({steg.output.playback_speed}%) does not match speed of qualifier: {playedChart.speed}%", ephemeral=True, delete_after=10)
 		elif set(steg.output.players[0].modifiers) != set(playedChart.modifiers_steg):
-			await interaction.followup.send(f"Uploaded Screenshot has incorrect modifiers {steg.output.players[0].modifiers} does not modifiers for  qualifier: {playedChart.modifiers_steg}", ephemeral=True, delete_after=10)
+			await interaction.followup.send(f"Uploaded Screenshot has incorrect modifiers {steg.output.players[0].modifiers} does not match modifiers for qualifier: {playedChart.modifiers_steg}", ephemeral=True, delete_after=10)
 			print(f"QUALIFIER: Screenshot player {steg.output.players[0].profile_name} has incorrect modifiers {steg.output.players[0].modifiers} for qualifier: {playedChart.modifiers_steg}")
 		else:
 			print(f"QUALIFIER: {self.ctx.user.display_name} screenshot {steg.img_name} accepted")

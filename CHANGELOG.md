@@ -24,6 +24,9 @@
 
 ### Changed
 
+- Incorporated verified fixes from the maintainer's [production-fix commit `a866682`](https://github.com/Jetsurf/corpo-ch/commit/a866682abe9db80bc195120051f1bdfd1d0381e1): channel/role admin search, per-match bot startup recovery, qualifier validation wording and 15-column qualifier export. Existing CORP action and publication checks remain in place.
+- Replaced append/delete player roster export with a single batch that replaces roster values, clears stale entries, and preserves the header and unrelated columns. Player names and Discord IDs are written as literal text.
+- Added complete PowerShell copy-and-paste instructions for entering the repository, checking prerequisites, running all local checks, inspecting the preview, and recognizing success or failure. MySQL and service-dependent checks remain separate.
 - Restored missing imports in Discord user refresh and tournament administration from the maintainer's patch. Focused tests cover task dispatch, missing staff membership and qualifier visibility without contacting Discord.
 - Updated the interactive preview to demonstrate CORP Cup loser-pick order, retaining the original design fixtures for comparison and adding a long-name example.
 - Aligned package and application development versions. The upstream baseline at `51d8836` identifies itself as `1.6.0`; its package metadata still said `1.5.4`. No published tag or release was changed.
@@ -36,6 +39,6 @@
 
 ### Delivery status
 
-The backend and viewer milestones are implemented but unreleased. The combined guarded application suite passes 174 tests using the real SQLite migration chain through `0030`; the foundation suite passes 57 executed tests with 9 explicit skips, and 12 Node controller tests pass. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
+The backend and viewer milestones are implemented but unreleased. The guide's exact automated-check block passes in Windows PowerShell 5.1: 190 application tests using the real SQLite migration chain through `0030`, 57 executed foundation tests with 9 explicit skips, and 12 Node controller tests. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
 Real MySQL concurrency, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.

@@ -33,22 +33,35 @@ Verify that the deployment serves `corpoch/match_viewer.css` and `corpoch/match_
 
 The SQLite suite and mocked SQL checks do not prove MySQL concurrency. The opt-in checker runs five native tests against a fresh database on a local test server. These native tests have not yet been executed.
 
-Prerequisites: a dedicated local MySQL test server with InnoDB, the declared `mysqlclient` dependency installed, and a test account allowed to create, use and drop disposable databases. Use a literal loopback IP address; `localhost` and remote hosts are rejected. Do not use a production server or deployment credentials.
+Prerequisites: a dedicated local MySQL test server with InnoDB, the declared `mysqlclient` dependency installed, and a test account allowed to create, use and drop disposable databases. Use a literal loopback IP address; `localhost` and remote hosts are rejected. Do not use a production server or deployment credentials. If you do not have a test server/account, stop at the [local verification guide](match-viewer-development.md) and ask the maintainer to arrange them. This command does not install MySQL.
 
-Run in PowerShell from the repository root. Estimated test duration: 15–90 seconds after the server and driver are available; CPU/database I/O only, no GPU. Server setup time is separate. The credential prompt avoids putting the password in shell history. Connection values exist only in this PowerShell session and its child process; the `finally` block removes them afterward.
+Paste the entire block into a fresh **PowerShell** window. It enters the example checkout at `C:\git\corpo-ch`; change only that path if your checkout is elsewhere. Estimated test duration: **15–90 seconds** after the server and driver are available; CPU/database I/O only, no GPU. Server setup time is separate. Enter the **MySQL test account's** username/password when prompted, not your Windows or Discord login. The credential prompt avoids putting the password in shell history. Connection values exist only in this PowerShell session and its child process; the `finally` block removes them afterward. The default local port is `3306`; use the test server's port if its maintainer supplied a different one.
 
 ```powershell
-$viewer_test_credentials = Get-Credential -Message 'Local disposable MySQL test account'
-try {
-    $env:MYSQL_TEST_HOST = '127.0.0.1'
-    $env:MYSQL_TEST_PORT = '3306'
-    $env:MYSQL_TEST_USER = $viewer_test_credentials.UserName
-    $env:MYSQL_TEST_PASSWORD = $viewer_test_credentials.GetNetworkCredential().Password
-    .\.venv\Scripts\python.exe -m tests.mysql_viewer_check --allow-create-test-database
-    if ($LASTEXITCODE -ne 0) { throw 'MySQL verification did not pass. Review its output before continuing.' }
-} finally {
-    Remove-Item Env:MYSQL_TEST_HOST, Env:MYSQL_TEST_PORT, Env:MYSQL_TEST_USER, Env:MYSQL_TEST_PASSWORD -ErrorAction SilentlyContinue
-    Remove-Variable viewer_test_credentials -ErrorAction SilentlyContinue
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location -LiteralPath 'C:\git\corpo-ch'
+    $viewer_branch = git branch --show-current
+    if ($LASTEXITCODE -ne 0 -or $viewer_branch -ne 'jons-tree-branch') {
+        throw 'This folder is not on jons-tree-branch. Stop here.'
+    }
+    if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) {
+        throw 'The prepared Python environment is missing. Stop here.'
+    }
+    $viewer_test_credentials = Get-Credential -Message 'Local disposable MySQL test account'
+    if (-not $viewer_test_credentials) { throw 'No credentials entered. No test was run.' }
+    try {
+        $env:MYSQL_TEST_HOST = '127.0.0.1'
+        $env:MYSQL_TEST_PORT = '3306'
+        $env:MYSQL_TEST_USER = $viewer_test_credentials.UserName
+        $env:MYSQL_TEST_PASSWORD = $viewer_test_credentials.GetNetworkCredential().Password
+        .\.venv\Scripts\python.exe -m tests.mysql_viewer_check --allow-create-test-database
+        if ($LASTEXITCODE -ne 0) { throw 'MySQL verification did not pass. Review its output before continuing.' }
+        Write-Host 'PASS: Local MySQL checks passed and their temporary database was removed.' -ForegroundColor Green
+    } finally {
+        Remove-Item Env:MYSQL_TEST_HOST, Env:MYSQL_TEST_PORT, Env:MYSQL_TEST_USER, Env:MYSQL_TEST_PASSWORD -ErrorAction SilentlyContinue
+        Remove-Variable viewer_test_credentials -ErrorAction SilentlyContinue
+    }
 }
 ```
 

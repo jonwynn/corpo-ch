@@ -39,7 +39,7 @@ class GuildAdmin(admin.ModelAdmin):
 class ChannelAdmin(admin.ModelAdmin):
 	list_display = ('_id', 'guild', 'name')
 	readonly_fields = ['name', 'deleted']
-	search_fields = ['_id', 'name']
+	search_fields = ['id', 'name']
 
 	def _id(self, obj):
 		return str(obj.id)
@@ -48,7 +48,7 @@ class ChannelAdmin(admin.ModelAdmin):
 class RoleAdmin(admin.ModelAdmin):
 	list_display = ('_id', 'guild', 'name')
 	readonly_fields = ['name', 'deleted']
-	search_fields = ['_id', 'name']
+	search_fields = ['id', 'name']
 
 	def _id(self, obj):
 		return str(obj.id)
