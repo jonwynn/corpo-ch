@@ -24,7 +24,7 @@ Open [the simulated viewer](http://127.0.0.1:8765/?case=live_example). Its contr
 
 The preview renders the actual templates and assets with in-memory example data. It opens a loopback HTTP listener, but does not connect to a database, Discord, OAuth, storage providers or Sheets. It does not exercise the production reader or authentication. Example controls are confined to this test server.
 
-The original visual fixtures use a generic alternating-pick profile. Their P2-win/P2-pick sequence is illustrative, not CORP Cup behavior. CORP Cup uses higher seed first, then the previous song's loser. Both profiles share the same visual layout.
+The simulated viewer follows CORP Cup: higher seed first, then the previous song's loser. Its later-round example shows P1 winning round 1 and P2 picking round 2. The original visual fixtures remain available for comparison; their P2-win/P2-pick sequence uses a generic alternating-pick profile. Both profiles share the same layout.
 
 ## Run isolated verification
 
@@ -77,15 +77,15 @@ The presentation digest compares content; it is not a sequence number. Browser g
 
 ## Evidence and remaining limits
 
-Local verification uses Windows, CPython 3.14.7, Django 6.0.8 and Celery 5.6.3. The combined guarded application run passed **171 tests in 23.320 seconds**, applied migrations through `corpoch.0030` and destroyed the test database afterward. Django reported no system-check issues. The foundation runner passed **44 executed tests**, with **9 explicit model-only skips**; the refresh controller passed **12 Node tests**.
+Local verification uses Windows, CPython 3.14.7, Django 6.0.8 and Celery 5.6.3. The combined guarded application run passed **174 tests in 21.949 seconds**, applied migrations through `corpoch.0030` and destroyed its test database afterward. Django reported no system-check issues. The foundation runner passed **57 executed tests**, with **9 explicit model-only skips**; these include 13 MySQL-checker ownership/configuration tests using a fake driver. The refresh controller passed **12 Node tests**.
 
-Three additional admin regression checks pass after applying the maintainer's missing-import fixes. They exercise the actual admin methods with outbound task dispatch mocked; no Discord update is sent.
+The application suite includes three admin regression checks for the maintainer's missing-import fixes. They exercise the actual admin methods with outbound task dispatch mocked; no Discord update is sent.
 
 These tests cover the real SQLite schema, sporting transitions, delayed callbacks, admin/bot integration seams, privacy, templates and recorded-state projection. Selected-reader query counts remain bounded when unrelated matches are added. Production latency, concurrent load and browser payload budgets still need measurement.
 
-Focused browser checks covered all three approved visual states, keyboard-opened details surviving first-pick/later-round updates, a 503 retaining the `0:1` score with stale/retry status, recovery to a corrected `0:0`, and a saved light theme surviving reload. A 390px window with a 375px content viewport had no horizontal overflow. These results do not cover every browser, zoom level or operating-system accessibility mode.
+Focused browser checks covered all three approved visual states, keyboard-opened details surviving first-pick/later-round updates, a 503 retaining the `0:1` score with stale/retry status, recovery to a corrected `0:0`, and a saved light theme surviving reload. The CORP interactive example also refreshed from opening bans to `1:0` with P2's next pick. Access loss cleared the score and player names. A 390px window with a 375px content viewport had no horizontal overflow, including long player/chart names. These results do not cover every browser, zoom level or operating-system accessibility mode.
 
-MySQL command-order tests verify the reader's intended repeatable-read transaction and connection cleanup through mocks. They do **not** prove MySQL snapshot consistency, row locking or concurrent writer behavior. The `MATCH_VIEWER_MYSQL_VERIFIED` gate remains off until a deployment-like disposable MySQL test passes.
+MySQL command-order tests verify the reader's intended repeatable-read transaction and connection cleanup through mocks. They do **not** prove MySQL snapshot consistency, row locking or concurrent writer behavior. An [opt-in local MySQL checker](match-viewer-rollout.md#verify-mysql-before-approving-its-gate) now supplies five native checks; those checks have not been run against MySQL. The `MATCH_VIEWER_MYSQL_VERIFIED` gate remains off until native and deployment-specific checks pass.
 
 OAuth login, live Discord callbacks, screenshot decoding/storage, Sheets publication and ordinary service startup remain manual integration gates. Hydra imports are delayed until its analysis operation; a missing submodule produces an explicit operation error. Actual Hydra execution is unverified. The declared Python minimum is not a tested compatibility guarantee; use the verified runtime until another version passes the same checks.
 

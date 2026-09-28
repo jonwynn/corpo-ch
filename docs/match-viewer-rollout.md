@@ -31,15 +31,36 @@ Verify that the deployment serves `corpoch/match_viewer.css` and `corpoch/match_
 
 ## Verify MySQL before approving its gate
 
-The current automated SQL tests mock MySQL commands. A real two-connection interleaving test is still required; there is no claim that the local SQLite suite proves this behavior.
+The SQLite suite and mocked SQL checks do not prove MySQL concurrency. The opt-in checker runs five native tests against a fresh database on a local test server. These native tests have not yet been executed.
 
-Run a reviewed staging test using `match_read_transaction` with a test-scoped verification override. Record MySQL/driver versions and confirm the relevant tables support transactions. Keep normal website/polling rollout disabled during this test.
+Prerequisites: a dedicated local MySQL test server with InnoDB, the declared `mysqlclient` dependency installed, and a test account allowed to create, use and drop disposable databases. Use a literal loopback IP address; `localhost` and remote hosts are rejected. Do not use a production server or deployment credentials.
 
-1. Pause reader A after its first snapshot read. Commit a supported score/next-round change from independent connection B. Finish A's reads. A must return one coherent earlier state; its next request must return the coherent newer state.
-2. Repeat around winner corrections, round deletion, player reassignment, account disable/role removal, and bracket reveal changes. Each new request must recheck authorization and visibility.
-3. Exercise two concurrent sporting callbacks with the same state token. Exactly one transition may commit; the stale request must be rejected without extra points or rounds.
-4. Force an SQL/body failure and confirm cleanup. Confirm nested/non-autocommit reads are rejected and no next-transaction isolation setting reaches an unrelated read. Check the connection/session behavior against the actual deployment configuration.
-5. Record query count, response duration, fragment bytes and load at the intended pilot viewer count. Compare the selected match with unrelated match volume. No production capacity or latency target has been measured yet.
+Run in PowerShell from the repository root. Estimated test duration: 15–90 seconds after the server and driver are available; CPU/database I/O only, no GPU. Server setup time is separate. The credential prompt avoids putting the password in shell history. Connection values exist only in this PowerShell session and its child process; the `finally` block removes them afterward.
+
+```powershell
+$viewer_test_credentials = Get-Credential -Message 'Local disposable MySQL test account'
+try {
+    $env:MYSQL_TEST_HOST = '127.0.0.1'
+    $env:MYSQL_TEST_PORT = '3306'
+    $env:MYSQL_TEST_USER = $viewer_test_credentials.UserName
+    $env:MYSQL_TEST_PASSWORD = $viewer_test_credentials.GetNetworkCredential().Password
+    .\.venv\Scripts\python.exe -m tests.mysql_viewer_check --allow-create-test-database
+    if ($LASTEXITCODE -ne 0) { throw 'MySQL verification did not pass. Review its output before continuing.' }
+} finally {
+    Remove-Item Env:MYSQL_TEST_HOST, Env:MYSQL_TEST_PORT, Env:MYSQL_TEST_USER, Env:MYSQL_TEST_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Variable viewer_test_credentials -ErrorAction SilentlyContinue
+}
+```
+
+The checker supplies dummy settings, blocks deployment `.env` and service imports, and creates only `corpo_viewer_validation_<generated-id>`. It refuses to reuse an existing schema. Normal completion, including test failures, removes only the database it successfully created. If a worker cannot stop or cleanup fails, it retains that database and reports its exact name for local review. It does not alter deployment settings or enable viewer gates. Native test failure tracebacks can include local server/account diagnostics; review logs before sharing them.
+
+The five checks cover default-off gates, a coherent reader snapshot during a concurrent score/next-round update, two competing actions with the same token, connection/isolation cleanup, and fresh staff/hidden-chart checks. A passing run reports five tests and successful database removal. Exit status is `0` for success, `1` for test failures, `2` for setup/cleanup errors and `130` for interruption.
+
+Record MySQL/driver versions and results. Before enabling a deployment, also exercise its own configuration:
+
+1. Repeat snapshot/interleaving checks around corrected winners, removed rounds and reassigned players. Recheck disabled accounts, revoked roles and bracket reveal changes on the next request.
+2. Force an SQL/body failure and confirm cleanup. Verify nested/non-autocommit reads are rejected and connection isolation does not reach unrelated work. The native checker uses short-lived connections; other deployment connection settings need their own verification.
+3. Record query count, response duration, fragment bytes and load at the intended pilot viewer count. Compare the selected match with unrelated match volume. No production capacity or latency target has been measured yet.
 
 Stop on mixed snapshots, stale writes, leaked chart data, unexpected locking or unbounded query growth. Do not mark `MATCH_VIEWER_MYSQL_VERIFIED` true in deployment configuration until this evidence is reviewed.
 

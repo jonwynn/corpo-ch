@@ -26,10 +26,31 @@ def render_previews(directory):
     long_names["source"]["players"][1]["name"] = "AnotherPlayerWithAnUnbrokenNameThatNeedsToWrap"
     long_names["source"]["rounds"][-1]["chart_title"] = "An extended chart title with featured performers and an additional tournament arrangement [CORP Edit]"
     cases["long_names"] = long_names
+    corp_names = {
+        "corp_opening": "approved_opening",
+        "corp_first_pick": "approved_first_pick",
+        "corp_later_round": "approved_second_pick",
+    }
+    for case_id, original in corp_names.items():
+        case = deepcopy(cases[original])
+        case["case_id"] = case_id
+        source = case["source"]
+        source["rules"].update(num_bans=2, ban_ruleset="bansave", pick_ruleset="loserpicks", tb_ruleset="corp_cup", profile_supported=True)
+        source["rules"].pop("fixture_only", None)
+        source["actions"] = source["actions"][:4]
+        first_player, second_player = [player["player_id"] for player in source["players"]]
+        source["actions"][2]["player_id"] = second_player
+        source["actions"][3]["player_id"] = first_player
+        for record in source["rounds"]:
+            record["loser_id"] = None
+            if record["winner_id"]:
+                # P1 wins round one so P2 is the next chooser under CORP rules.
+                record["winner_id"], record["loser_id"] = first_player, second_player
+        cases[case_id] = case
     selected = list(cases.values())
     pages = {}
     fragments = {}
-    preview_names = {"approved_opening", "approved_first_pick", "approved_second_pick", "long_names", "target_best_of_9", "missing_participant"}
+    preview_names = {*corp_names, "approved_second_pick", "long_names", "target_best_of_9", "missing_participant"}
     choices = [{"url": f"/?case={item['case_id']}", "label": item["case_id"].replace("_", " ")} for item in selected if item["case_id"] in preview_names]
     with ViewerTestEnvironment(directory, allow_models=True):
         import django
@@ -40,14 +61,24 @@ def render_previews(directory):
         else:
             django.setup()
         from corpoch.match_viewer import build_match_presentation
+        from corpoch.match_rules import OpeningAction, validate_corp_cup_history
         for case in selected:
+            if case["case_id"] in corp_names:
+                source = case["source"]
+                chart_ids = tuple(dict.fromkeys(record["chart_id"] for record in [*source["actions"], *source["rounds"]]))
+                chart_ids += tuple(f"unused-{index}" for index in range(11 - len(chart_ids)))
+                validate_corp_cup_history(
+                    tuple(player["player_id"] for player in source["players"]), chart_ids,
+                    tuple(OpeningAction(row["num"], row["player_id"], row["chart_id"], row["saved"]) for row in source["actions"]),
+                    tuple(row["action_phase"] for row in source["actions"]), tuple(source["rounds"]), 7,
+                )
             viewer = build_match_presentation(case["source"], case["request"]["pins"])
             context = {"viewer": viewer, "preview_mode": True, "fixture_choices": choices}
             pages[case["case_id"]] = render_to_string("match_viewer/page.html", context).encode()
             fragments[case["case_id"]] = render_to_string("match_viewer/state.html", {"viewer": viewer, "state_url": "/state"}).encode()
         # A controlled polling example exercises browser DOM updates with the
         # same three fixture states. It contains no real staff or match data.
-        initial = deepcopy(cases["approved_opening"])
+        initial = deepcopy(cases["corp_opening"])
         viewer = build_match_presentation(initial["source"])
         page = render_to_string("match_viewer/page.html", {"viewer": viewer, "preview_mode": True, "state_url": "/state"})
         controls = '<aside class="mv-preview"><p>Fixture controls · example data only</p>'
@@ -67,10 +98,7 @@ def serve_preview(port):
     :param int port: Loopback port"""
     with tempfile.TemporaryDirectory(prefix="corpo-viewer-preview-") as directory:
         pages, fragments, assets = render_previews(directory)
-    example = {"case": "approved_opening", "status": 200}
-    names = list(pages)
-    first = next(name for name in names if name.startswith("approved_") and "first" in name)
-    later = next(name for name in names if name.startswith("approved_") and name not in {first, "approved_opening"})
+    example = {"case": "corp_opening", "status": 200}
 
     class PreviewHandler(BaseHTTPRequestHandler):
         """Reads fixture documents and changes only the in-memory example selector."""
@@ -80,13 +108,13 @@ def serve_preview(port):
             query = parse_qs(parsed.query)
             status, content_type = 200, "text/html; charset=utf-8"
             if parsed.path == "/":
-                body = pages.get(query.get("case", ["approved_opening"])[0])
+                body = pages.get(query.get("case", ["corp_opening"])[0])
             elif parsed.path == "/state":
                 status = example["status"]
                 body = fragments[example["case"]] if status == 200 else b"Example request failure"
             elif parsed.path == "/example":
                 selection = query.get("select", ["opening"])[0]
-                example["case"] = {"opening": "approved_opening", "first": first, "later": later}.get(selection, example["case"])
+                example["case"] = {"opening": "corp_opening", "first": "corp_first_pick", "later": "corp_later_round"}.get(selection, example["case"])
                 example["status"] = {"failure": 503, "denied": 403}.get(selection, 200)
                 body = b"Example changed"
             elif parsed.path == "/example-controls.js":

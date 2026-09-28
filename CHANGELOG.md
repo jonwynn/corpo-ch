@@ -20,10 +20,12 @@
 - Native browser refresh with one request at a time, cancellation, pinned identity checks, stale/retry handling, preserved details and access-loss clearing. Existing overlay refresh is unchanged.
 - Dark, light and system appearance choices, saved theme selection, narrow layouts and forced-color styles.
 - A loopback fixture preview with simulated updates/failures, read-side regression tests, 12 refresh-controller tests and a staged rollout/rollback checklist.
+- An opt-in local MySQL checker that creates its own disposable database for five concurrency/access tests. Thirteen no-server checks cover its configuration and cleanup boundaries; native MySQL execution remains a rollout gate.
 
 ### Changed
 
 - Restored missing imports in Discord user refresh and tournament administration from the maintainer's patch. Focused tests cover task dispatch, missing staff membership and qualifier visibility without contacting Discord.
+- Updated the interactive preview to demonstrate CORP Cup loser-pick order, retaining the original design fixtures for comparison and adding a long-name example.
 - Aligned package and application development versions. The upstream baseline at `51d8836` identifies itself as `1.6.0`; its package metadata still said `1.5.4`. No published tag or release was changed.
 - Added fork development and validation documentation while preserving existing setup instructions and contributor credits.
 - Restored `django-encrypted-json-fields==1.0.5`, required by historical migration `0001`. Fresh migrations now complete without editing migration history or replacing the encryption package used by current models.
@@ -34,6 +36,6 @@
 
 ### Delivery status
 
-The backend and viewer milestones are implemented but unreleased. The combined guarded application suite passes 171 tests using the real SQLite migration chain through `0030`; the foundation suite passes 44 executed tests with 9 explicit skips, and 12 Node controller tests pass. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, saved appearance and a narrow viewport.
+The backend and viewer milestones are implemented but unreleased. The combined guarded application suite passes 174 tests using the real SQLite migration chain through `0030`; the foundation suite passes 57 executed tests with 9 explicit skips, and 12 Node controller tests pass. Focused browser checks cover the approved states, details preservation, failed refresh/recovery, access loss, saved appearance and long text in a narrow viewport.
 
 Real MySQL concurrency, OAuth/Discord/provider execution, old encrypted-data conversion, operating-system high contrast and final human visual acceptance remain rollout gates. All viewer switches remain off by default. No deployment has been performed.
