@@ -4,23 +4,67 @@ from corpoch.match_actions import (
     MatchActionError, finalize_match, get_match_state_token, load_corp_context,
     locked_match, record_round_winner, select_chart, undo_match_action,
 )
+from corpoch.models import DiscordUser
 from staging.configuration import StagingConfigurationError
-from staging.viewer_fixture import fixture_definition, read_fixture_marker, validate_fixture
+from staging.viewer_fixture import fixture_definition, read_fixture_marker, validate_fixture, validate_identifier
 
 
-def validate_actor(match, account_id, guild_id):
+def validate_actor(match, account_id, guild_id, shared_referees=False):
     """
-    Requires the expected local owner and guild without granting new access
+    Requires the owner or an explicitly enabled active local referee
 
     :param Match match: Validated sample match
     :param int account_id: Independently checked human identity
-    :param int guild_id: Independently checked DEV server identity"""
+    :param int guild_id: Independently checked DEV server identity
+    :param bool shared_referees: Whether explicit shared-mode referee grants are accepted"""
     marker = read_fixture_marker(match)
     if (
         type(account_id) is not int or type(guild_id) is not int
-        or account_id != marker["account_id"] or guild_id != marker["guild_id"]
+        or guild_id != marker["guild_id"] or type(shared_referees) is not bool
     ):
         raise StagingConfigurationError("This account or server does not own the local sample.")
+    if shared_referees:
+        if not match.group.bracket.tournament.guild.referees.filter(pk=account_id, is_active=True).exists():
+            raise StagingConfigurationError("This account does not have active local referee access.")
+    elif account_id != marker["account_id"]:
+        raise StagingConfigurationError("This account or server does not own the local sample.")
+
+
+def grant_shared_referee(account_id, guild_id):
+    """
+    Stores a minimal local grant after the caller verifies current Discord roles
+
+    :param int account_id: Freshly verified human Discord identity
+    :param int guild_id: Freshly verified pinned DEV guild"""
+    validate_identifier(account_id)
+    validate_identifier(guild_id)
+    with locked_match(fixture_definition()["match_id"]):
+        match = validate_fixture()
+        if guild_id != read_fixture_marker(match)["guild_id"]:
+            raise StagingConfigurationError("The shared referee does not belong to the sample server.")
+        account = DiscordUser.objects.filter(pk=account_id).first()
+        if account is None:
+            account = DiscordUser(pk=account_id, is_active=True, is_staff=False, is_superuser=False)
+            account.set_unusable_password()
+            account.save()
+        if not account.is_active:
+            raise StagingConfigurationError("This local account is disabled.")
+        match.group.bracket.tournament.guild.referees.add(account)
+
+
+def revoke_shared_referee(account_id, guild_id):
+    """
+    Removes only one caller's local grant after confirmed Discord role removal
+
+    :param int account_id: Previously authorized human identity
+    :param int guild_id: Pinned DEV guild identity"""
+    validate_identifier(account_id)
+    validate_identifier(guild_id)
+    with locked_match(fixture_definition()["match_id"]):
+        match = validate_fixture(require_access=False)
+        if guild_id != read_fixture_marker(match)["guild_id"]:
+            raise StagingConfigurationError("The shared referee does not belong to the sample server.")
+        match.group.bracket.tournament.guild.referees.remove(account_id)
 
 
 def create_control_snapshot(match):
@@ -59,21 +103,22 @@ def create_control_snapshot(match):
     }
 
 
-def build_control_snapshot(account_id=None, guild_id=None):
+def build_control_snapshot(account_id=None, guild_id=None, shared_referees=False):
     """
     Reads the owned sample without exposing ORM objects to the event loop
 
     :param int account_id: Optional expected human identity
     :param int guild_id: Optional expected DEV server identity
+    :param bool shared_referees: Whether explicit shared-mode referee grants are accepted
     :return: Detached control snapshot"""
     with locked_match(fixture_definition()["match_id"]):
         match = validate_fixture()
         if account_id is not None or guild_id is not None:
-            validate_actor(match, account_id, guild_id)
+            validate_actor(match, account_id, guild_id, shared_referees)
         return create_control_snapshot(match)
 
 
-def apply_control_action(action, expected_state, account_id, guild_id, chart_id=None, player_id=None):
+def apply_control_action(action, expected_state, account_id, guild_id, chart_id=None, player_id=None, shared_referees=False):
     """
     Applies one existing referee transition inside the fixture ownership boundary
 
@@ -83,6 +128,7 @@ def apply_control_action(action, expected_state, account_id, guild_id, chart_id=
     :param int guild_id: Expected DEV server
     :param int chart_id: Explicit chart selected by the referee
     :param int player_id: Captured picker or selected round winner
+    :param bool shared_referees: Whether explicit shared-mode referee grants are accepted
     :return: Updated detached control snapshot"""
     if action not in {"pick", "winner", "undo", "finalize"}:
         raise StagingConfigurationError("This action is unavailable in the local Discord pilot.")
@@ -90,7 +136,7 @@ def apply_control_action(action, expected_state, account_id, guild_id, chart_id=
         raise StagingConfigurationError("Open fresh sample controls before changing the match.")
     with locked_match(fixture_definition()["match_id"], expected_state):
         match = validate_fixture()
-        validate_actor(match, account_id, guild_id)
+        validate_actor(match, account_id, guild_id, shared_referees)
         context = load_corp_context(match)
         if action == "pick":
             if type(chart_id) is not int or type(player_id) is not int:

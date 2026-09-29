@@ -11,6 +11,14 @@ import requests
 class RefereeCheckError(ValueError):
     """Reports a fixed explanation without credential or response values."""
 
+    def __init__(self, message, status_code=None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class RefereeAccessDenied(RefereeCheckError):
+    """Distinguishes confirmed access loss from incomplete metadata."""
+
 
 class RefereeTransport:
     """Allows only the three Discord metadata requests needed for one check."""
@@ -53,7 +61,10 @@ class RefereeTransport:
                 stream=True,
             ) as response:
                 if response.status_code != 200:
-                    raise RefereeCheckError("Discord did not allow the required metadata check. Review access and try again.")
+                    raise RefereeCheckError(
+                        "Discord did not allow the required metadata check. Review access and try again.",
+                        status_code=response.status_code,
+                    )
                 contents = bytearray()
                 for chunk in response.iter_content(chunk_size=16384):
                     contents.extend(chunk)
@@ -158,11 +169,13 @@ def validate_member(document, account_id, role_ids):
     roles = document.get("roles")
     if (
         not isinstance(user, dict) or user.get("id") != account_id
-        or user.get("bot", False) is not False or document.get("pending", False) is not False
+        or type(user.get("bot", False)) is not bool or type(document.get("pending", False)) is not bool
         or not isinstance(roles, list) or any(not validate_snowflake(role_id) for role_id in roles)
-        or len(set(roles)) != len(roles) or not set(roles).intersection(role_ids)
+        or len(set(roles)) != len(roles)
     ):
         raise RefereeCheckError("Discord did not confirm an authorized human referee.")
+    if user.get("bot", False) or document.get("pending", False) or not set(roles).intersection(role_ids):
+        raise RefereeAccessDenied("Discord did not confirm an authorized human referee.")
 
 
 def verify_referee(bot_token, expected_bot_id, guild_id, account_id, role_ids):

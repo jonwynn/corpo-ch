@@ -54,24 +54,32 @@ def acquire_pilot_lock(directory):
         os.close(descriptor)
 
 
-def create_pilot_bot(snapshot, expected_bot_id, channel_id):
+def create_pilot_bot(snapshot, expected_bot_id, channel_id, public_origin=None):
     """
     Builds a guild-only client without loading the production bot or its queues
 
     :param dict snapshot: Validated detached local fixture
     :param int expected_bot_id: Independently pinned DEV application
     :param int channel_id: Explicit DEV test channel
+    :param str public_origin: Optional validated HTTPS origin enabling shared referees
     :return: Configured Pycord client, not yet connected"""
     import discord
     from asgiref.sync import sync_to_async
 
     from corpoch.match_actions import MatchActionError
     from staging.discord_controls import create_controls
-    from staging.discord_fixture import apply_control_action, build_control_snapshot
+    from staging.discord_fixture import (
+        apply_control_action, build_control_snapshot, grant_shared_referee, revoke_shared_referee,
+    )
     from staging.viewer_fixture import revoke_fixture_access
 
+    if public_origin is not None:
+        from staging.sharing import validate_public_origin
+
+        public_origin = validate_public_origin(public_origin)
+
     class PilotBot(discord.Bot):
-        """Responds only to the owner in the approved DEV channel."""
+        """Responds only to explicitly authorized humans in the pinned DEV channel."""
 
         def __init__(self):
             intents = discord.Intents.none()
@@ -83,6 +91,8 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
             self.pilot_snapshot = snapshot
             self.pilot_lock = asyncio.Lock()
             self.active_view = None
+            self.active_views = {}
+            self.public_origin = public_origin
             self.registered = False
             self.failed = False
             self.pilot_command = self.slash_command(
@@ -98,19 +108,34 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
                 and interaction.application_id == expected_bot_id
             )
 
-        async def current_member(self):
-            """Reads the current owner membership directly from the pinned guild."""
+        async def revoke_member(self, account_id):
+            """Revokes only the confirmed caller's local referee grant."""
+            if public_origin is None:
+                await sync_to_async(run_database_call)(revoke_fixture_access)
+            else:
+                await sync_to_async(run_database_call)(revoke_shared_referee, account_id, snapshot["guild_id"])
+
+        async def current_member(self, account_id=None):
+            """Reads current human membership directly from the pinned guild."""
+            account_id = snapshot["account_id"] if account_id is None else account_id
             guild = self.get_guild(snapshot["guild_id"])
             if guild is None:
                 raise StagingConfigurationError("The DEV server is unavailable to this bot.")
-            member = await asyncio.wait_for(guild.fetch_member(snapshot["account_id"]), timeout=15)
+            member = await asyncio.wait_for(guild.fetch_member(account_id), timeout=15)
             if (
-                member.id != snapshot["account_id"] or member.bot or member.pending
+                member.id != account_id or member.bot or member.pending
                 or not {role.id for role in member.roles}.intersection(snapshot["role_ids"])
             ):
-                await sync_to_async(run_database_call)(revoke_fixture_access)
-                raise StagingConfigurationError("The sample owner no longer has an approved DEV referee role.")
+                await self.revoke_member(account_id)
+                raise StagingConfigurationError("This member does not have an approved DEV referee role.")
             return member
+
+        async def read_snapshot(self, account_id):
+            """Reads the sample with only this session's explicit authorization policy."""
+            options = {"shared_referees": True} if public_origin is not None else {}
+            return await sync_to_async(run_database_call)(
+                build_control_snapshot, account_id, snapshot["guild_id"], **options,
+            )
 
         async def notify(self, interaction, message):
             """Sends only a private response within the pinned test channel."""
@@ -125,16 +150,22 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
             """Checks destination, human identity, fresh roles and stored local access."""
             if not self.registered or self.failed or not self.in_scope(interaction):
                 return False
-            if interaction.user.id != snapshot["account_id"] or interaction.user.bot:
-                await self.notify(interaction, "Only the signed-in sample owner can use these controls.")
+            if interaction.user.bot or (public_origin is None and interaction.user.id != snapshot["account_id"]):
+                message = (
+                    "Only human DEV referees can use these controls." if public_origin
+                    else "Only the signed-in sample owner can use these controls."
+                )
+                await self.notify(interaction, message)
                 return False
             if not interaction.response.is_done():
                 await interaction.response.defer(ephemeral=True, invisible=True)
             try:
-                await self.current_member()
-                await sync_to_async(run_database_call)(build_control_snapshot, snapshot["account_id"], snapshot["guild_id"])
+                await self.current_member(interaction.user.id)
+                if public_origin is not None:
+                    await sync_to_async(run_database_call)(grant_shared_referee, interaction.user.id, snapshot["guild_id"])
+                await self.read_snapshot(interaction.user.id)
             except discord.NotFound:
-                await sync_to_async(run_database_call)(revoke_fixture_access)
+                await self.revoke_member(interaction.user.id)
                 await self.notify(interaction, "DEV membership is unavailable. Local sample access was revoked.")
                 return False
             except (StagingConfigurationError, discord.HTTPException, asyncio.TimeoutError):
@@ -144,29 +175,40 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
 
         async def show_controls(self, interaction, current):
             """Replaces one private control message with the current saved state."""
-            if not self.in_scope(interaction) or interaction.user.id != snapshot["account_id"]:
+            if not self.in_scope(interaction) or (public_origin is None and interaction.user.id != snapshot["account_id"]):
                 return
             view, embed = await create_controls(current, self.authorize, self.perform, self.notify)
+            content = "DEV sample only · changes appear in your local match viewer"
+            if public_origin is not None:
+                view.add_item(discord.ui.Button(label="Open viewer", url=f"{public_origin}/auth/start"))
+                content = "DEV sample only · Open viewer and sign in with Discord once to watch live updates."
             try:
                 await interaction.edit_original_response(
-                    content="DEV sample only · changes appear in your local match viewer",
+                    content=content,
                     embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none(),
                 )
             except Exception:
                 view.stop()
                 raise
-            if self.active_view is not None:
-                self.active_view.stop()
-            self.active_view = view
+            if public_origin is None:
+                if self.active_view is not None:
+                    self.active_view.stop()
+                self.active_view = view
+            else:
+                previous = self.active_views.pop(interaction.user.id, None)
+                if previous is not None:
+                    previous.stop()
+                while len(self.active_views) >= 20:
+                    oldest_account = next(iter(self.active_views))
+                    self.active_views.pop(oldest_account).stop()
+                self.active_views[interaction.user.id] = view
 
         async def open_controls(self, context):
             """Opens controls only after a human invokes the DEV slash command."""
             interaction = context.interaction
             async with self.pilot_lock:
                 if await self.authorize(interaction):
-                    current = await sync_to_async(run_database_call)(
-                        build_control_snapshot, snapshot["account_id"], snapshot["guild_id"],
-                    )
+                    current = await self.read_snapshot(interaction.user.id)
                     await self.show_controls(interaction, current)
 
         async def perform(self, interaction, action, expected_state, chart_id=None, player_id=None):
@@ -175,15 +217,14 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
                 if not await self.authorize(interaction):
                     return
                 try:
+                    options = {"shared_referees": True} if public_origin is not None else {}
                     current = await sync_to_async(run_database_call)(
-                        apply_control_action, action, expected_state, snapshot["account_id"], snapshot["guild_id"],
-                        chart_id=chart_id, player_id=player_id,
+                        apply_control_action, action, expected_state, interaction.user.id, snapshot["guild_id"],
+                        chart_id=chart_id, player_id=player_id, **options,
                     )
                 except MatchActionError:
                     await self.notify(interaction, "The match changed or this action is unavailable. Review the refreshed controls.")
-                    current = await sync_to_async(run_database_call)(
-                        build_control_snapshot, snapshot["account_id"], snapshot["guild_id"],
-                    )
+                    current = await self.read_snapshot(interaction.user.id)
                 except StagingConfigurationError:
                     await self.notify(interaction, "The local sample is unavailable. No action was applied.")
                     return
@@ -220,7 +261,8 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
                 if self.is_closed():
                     return
                 self.registered = True
-                print("READY: Use /viewer-pilot in the DEV test channel. Controls are private to the sample owner.", flush=True)
+                audience = "approved DEV referees" if public_origin is not None else "the sample owner"
+                print(f"READY: Use /viewer-pilot in the DEV test channel. Controls are private to {audience}.", flush=True)
             except Exception:
                 self.failed = True
                 print("STOP: DEV startup verification failed. No match command was enabled by this session.", flush=True)
@@ -239,12 +281,15 @@ def create_pilot_bot(snapshot, expected_bot_id, channel_id):
             self.registered = False
             if self.active_view is not None:
                 self.active_view.stop()
+            for view in self.active_views.values():
+                view.stop()
+            self.active_views.clear()
             await super().close()
 
     return PilotBot()
 
 
-async def run_gateway(snapshot, expected_bot_id, channel_id, bot_token):
+async def run_gateway(snapshot, expected_bot_id, channel_id, bot_token, public_origin=None):
     """
     Verifies the authenticated bot before opening its gateway connection
 
@@ -252,8 +297,9 @@ async def run_gateway(snapshot, expected_bot_id, channel_id, bot_token):
     :param int expected_bot_id: Pinned DEV application
     :param int channel_id: Pinned DEV text channel
     :param str bot_token: Private in-memory credential
+    :param str public_origin: Optional public HTTPS viewer origin
     :return: Process exit status"""
-    bot = create_pilot_bot(snapshot, expected_bot_id, channel_id)
+    bot = create_pilot_bot(snapshot, expected_bot_id, channel_id, public_origin)
     try:
         await asyncio.wait_for(bot.login(bot_token), timeout=30)
         if bot.user.id != expected_bot_id or not bot.user.bot:
@@ -264,19 +310,24 @@ async def run_gateway(snapshot, expected_bot_id, channel_id, bot_token):
         await bot.close()
 
 
-async def check_controls(snapshot, expected_bot_id, channel_id):
+async def check_controls(snapshot, expected_bot_id, channel_id, public_origin=None):
     """
     Builds and serializes the actual client and controls without connecting
 
     :param dict snapshot: Validated detached sample
     :param int expected_bot_id: Pinned DEV application
-    :param int channel_id: Pinned DEV channel"""
+    :param int channel_id: Pinned DEV channel
+    :param str public_origin: Optional public HTTPS viewer origin"""
     from staging.discord_controls import create_controls
 
-    bot = create_pilot_bot(snapshot, expected_bot_id, channel_id)
+    bot = create_pilot_bot(snapshot, expected_bot_id, channel_id, public_origin)
     try:
         view, embed = await create_controls(snapshot, bot.authorize, bot.perform)
         try:
+            if public_origin is not None:
+                import discord
+
+                view.add_item(discord.ui.Button(label="Open viewer", url=f"{bot.public_origin}/auth/start"))
             view.to_components()
             embed.to_dict()
             bot.pilot_command.to_dict()
@@ -298,6 +349,7 @@ def main(arguments=None):
     parser.add_argument("--guild-id", required=True)
     parser.add_argument("--channel-id", required=True)
     parser.add_argument("--credentials-file", required=True)
+    parser.add_argument("--public-origin", help="Optional temporary HTTPS viewer origin enabling approved DEV referees.")
     parser.add_argument("command", choices=("check", "run"))
     options = parser.parse_args(arguments)
     try:
@@ -321,12 +373,12 @@ def main(arguments=None):
             raise StagingConfigurationError("The private DEV bot credential is missing.")
         del credentials
         if options.command == "check":
-            asyncio.run(check_controls(snapshot, int(options.expected_bot_id), int(options.channel_id)))
+            asyncio.run(check_controls(snapshot, int(options.expected_bot_id), int(options.channel_id), options.public_origin))
             print("PASS: Owned sample, local access, database, credential structure and Discord controls are ready.")
             print("No Discord connection, command registration or message was sent.")
             return 0
         with acquire_pilot_lock(configuration.runtime_root):
-            return asyncio.run(run_gateway(snapshot, int(options.expected_bot_id), int(options.channel_id), token))
+            return asyncio.run(run_gateway(snapshot, int(options.expected_bot_id), int(options.channel_id), token, options.public_origin))
     except KeyboardInterrupt:
         print("Stopped the local Discord pilot. The website and database remain running.")
         return 0

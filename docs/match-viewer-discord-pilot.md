@@ -4,6 +4,8 @@ Version **1.7.0-beta.1**, unreleased. Complete the [local sample checkpoint](mat
 
 This checkpoint lets the signed-in sample owner pick charts and record winners in Discord while watching the existing website update. It uses the existing referee callbacks and match writers. The local database still contains the same fictional players and songs. Its opening bans remain fixed; it does not reset prior testing.
 
+To include other approved DEV referees and share the webpage, use the [local sharing guide](match-viewer-local-sharing.md). That optional mode uses `-PublicOrigin`; the commands below retain owner-only access.
+
 The launcher connects **Corpo Ref Bot - DEV** using the prepared private credentials. It registers only `/viewer-pilot` in the configured DEV server, preserving other commands. Controls appear only after the owner invokes that command in the configured test channel, and only that owner can see and use them. It does not run the normal `/tourney match` setup, Redis, Celery workers, a scheduler, screenshot processing or Sheets exports.
 
 ## 1. Keep the website running

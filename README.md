@@ -14,6 +14,7 @@ This fork adds a read-only live match viewer for tournament staff on the existin
 - [Private development credentials and test-service preparation](docs/match-viewer-staging.md)
 - [Local Linux website: setup, Supervisor controls and login check](docs/match-viewer-staging-runtime.md)
 - [Accepted local DEV Discord pilot and manual checks](docs/match-viewer-discord-pilot.md#verified-local-checkpoint)
+- [Share the local viewer and DEV controls with another tester](docs/match-viewer-local-sharing.md)
 - [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
 - [Outside-access testing: operator and remote tester steps](docs/match-viewer-outside-access.md)
 - [Changelog](CHANGELOG.md)
@@ -23,6 +24,8 @@ The explicit CORP Cup profile uses four opening ban/save actions, higher-seed fi
 The local single-owner DEV pilot is accepted: real Discord login, picks/results, finalization, reopening/undo, restart, private controls, narrow layouts, 200% zoom and Windows high contrast have passed manual review. Isolated tests, browser checks and fourteen native Linux MySQL checks provide additional coverage. It is **not deployed to production**. Viewer, polling and MySQL verification switches default off outside the explicit local pilot. Broader staff access, deployment-specific database/load checks and ordinary bot/provider integration remain separate work. Existing overlay and non-CORP rule paths remain available.
 
 The local Linux environment runs the website and its separate MySQL database under Supervisor. Restricted DEV referee controls run in an explicitly started foreground session. Private configuration stays outside the repository, and production settings are not loaded. The guides include exact PowerShell start/stop commands. Ordinary bot startup, workers, screenshots and exports remain separate integration work.
+
+Optional local sharing adds a separate loopback website behind a temporary HTTPS tunnel. Approved DEV referees can invoke `/viewer-pilot` without website setup, then open the viewer through Discord sign-in. All testers use the same synthetic match. The default owner-only mode stays available; real outside-browser acceptance is still pending.
 
 ## Links
 

@@ -4,6 +4,8 @@
 
 ### Added
 
+- Optional local staff sharing for the synthetic DEV match: a separate loopback ASGI website behind a pinned temporary HTTPS origin, existing Discord sign-in, short-lived live-role checks and secure cookies. The bot accepts other approved human referees only in explicit shared mode, with private per-user controls and an Open viewer link. Owner-only defaults, match ownership and production settings remain unchanged.
+- PowerShell shared-viewer startup and a host/tester guide covering temporary tunnel setup, DEV OAuth callbacks, same-match coordination and shutdown. Automated coverage includes shared grants, permission failures, OAuth continuation, route isolation and web-server compatibility; real outside-browser acceptance remains pending.
 - A native MySQL regression that renders one selected match before and after adding 100 unrelated populated matches. It checks unchanged query count, identical response content, read-only SQL and closed connections.
 - A foreground DEV Discord pilot for the existing synthetic sample. It reuses chart, winner, undo and finalization callbacks through detached controls, with fresh role checks, local ownership and state-token validation. Its private responses are restricted to the sample owner and configured DEV channel. The launcher registers one guild command without deleting other commands; it loads no production bot, broker, worker or export provider.
 - Copy-and-paste PowerShell checks and launch instructions for the DEV Discord pilot, including private control recovery and foreground shutdown.

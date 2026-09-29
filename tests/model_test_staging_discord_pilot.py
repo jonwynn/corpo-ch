@@ -47,6 +47,8 @@ class StagingDiscordPilotTests(SimpleTestCase):
             "staging.discord_fixture.apply_control_action", return_value={**self.snapshot, "token": "b" * 64},
         ))
         self.revoke = self.enterContext(patch("staging.viewer_fixture.revoke_fixture_access"))
+        self.grant_shared = self.enterContext(patch("staging.discord_fixture.grant_shared_referee"))
+        self.revoke_shared = self.enterContext(patch("staging.discord_fixture.revoke_shared_referee"))
         self.create_controls = self.enterContext(patch(
             "staging.discord_controls.create_controls", new_callable=AsyncMock,
             return_value=(Mock(), Mock()),
@@ -78,6 +80,16 @@ class StagingDiscordPilotTests(SimpleTestCase):
 
     def mark_response_done(self, **options):
         self.interaction.response.is_done.return_value = True
+
+    def enable_shared_bot(self):
+        self.bot = create_pilot_bot(
+            self.snapshot, self.bot_id, self.channel_id, "https://fixture-viewer.trycloudflare.com",
+        )
+        self.bot.registered = True
+        self.bot.get_guild = Mock(return_value=self.guild)
+        self.bot.process_application_commands = AsyncMock()
+        self.interaction.user.id = 124
+        self.member.id = 124
 
     def create_immediate_adapter(self, function, **options):
         async def adapted(*arguments, **keywords):
@@ -383,6 +395,75 @@ class StagingDiscordPilotTests(SimpleTestCase):
                     self.assertEqual(run_database_call(operation, 123, guild_id=456), {"detached": True})
             operation.assert_called_once_with(123, guild_id=456)
             self.assertEqual(events, ["before", "after"])
+
+    def test_shared_referee_is_verified_and_granted_without_using_owner_identity(self):
+        self.enable_shared_bot()
+        self.run_callback(self.bot.perform, self.interaction, "undo", "a" * 64)
+        self.guild.fetch_member.assert_awaited_once_with(124)
+        self.grant_shared.assert_called_once_with(124, 456)
+        self.read_snapshot.assert_called_once_with(124, 456, shared_referees=True)
+        self.apply_action.assert_called_once_with(
+            "undo", "a" * 64, 124, 456, chart_id=None, player_id=None, shared_referees=True,
+        )
+        button = self.create_controls.return_value[0].add_item.call_args.args[0]
+        self.assertEqual(button.label, "Open viewer")
+        self.assertEqual(button.url, "https://fixture-viewer.trycloudflare.com/auth/start")
+        self.revoke.assert_not_called()
+
+    def test_shared_role_loss_removes_only_caller_and_temporary_outage_keeps_grant(self):
+        self.enable_shared_bot()
+        self.member.roles = []
+        self.assertFalse(self.run_callback(self.bot.authorize, self.interaction))
+        self.revoke_shared.assert_called_once_with(124, 456)
+        self.revoke.assert_not_called()
+        self.grant_shared.assert_not_called()
+        self.revoke_shared.reset_mock()
+        self.guild.fetch_member.side_effect = asyncio.TimeoutError()
+        self.assertFalse(self.run_callback(self.bot.authorize, self.interaction))
+        self.revoke_shared.assert_not_called()
+        self.read_snapshot.assert_not_called()
+
+    def test_shared_missing_member_revokes_caller_and_bots_never_read_or_grant(self):
+        self.enable_shared_bot()
+        self.guild.fetch_member.side_effect = discord.NotFound(SimpleNamespace(status=404, reason="Not Found"), "Absent")
+        self.assertFalse(self.run_callback(self.bot.authorize, self.interaction))
+        self.revoke_shared.assert_called_once_with(124, 456)
+        self.guild.fetch_member.reset_mock()
+        self.interaction.user.bot = True
+        self.assertFalse(self.run_callback(self.bot.authorize, self.interaction))
+        self.guild.fetch_member.assert_not_awaited()
+        self.grant_shared.assert_not_called()
+
+    def test_shared_views_are_separate_bounded_and_cleaned_up(self):
+        self.enable_shared_bot()
+        views = []
+        for account_id in range(124, 145):
+            self.interaction.user.id = account_id
+            view = Mock()
+            views.append(view)
+            self.create_controls.return_value = (view, Mock())
+            self.run_callback(self.bot.show_controls, self.interaction, self.snapshot)
+        self.assertEqual(len(self.bot.active_views), 20)
+        views[0].stop.assert_called_once_with()
+        for view in views[1:]:
+            view.stop.assert_not_called()
+        replacement = Mock()
+        self.create_controls.return_value = (replacement, Mock())
+        self.run_callback(self.bot.show_controls, self.interaction, self.snapshot)
+        views[-1].stop.assert_called_once_with()
+        with patch.object(discord.Bot, "close", new_callable=AsyncMock):
+            self.run_callback(type(self.bot).close, self.bot)
+        replacement.stop.assert_called_once_with()
+        self.assertEqual(self.bot.active_views, {})
+
+    def test_shared_grant_failure_prevents_actions_and_owner_mode_never_grants(self):
+        self.run_callback(self.bot.authorize, self.interaction)
+        self.grant_shared.assert_not_called()
+        self.enable_shared_bot()
+        self.grant_shared.side_effect = StagingConfigurationError("Disabled local account")
+        self.assertFalse(self.run_callback(self.bot.authorize, self.interaction))
+        self.apply_action.assert_not_called()
+        self.revoke_shared.assert_not_called()
 
     @skipUnless(sys.platform == "linux", "The explicit DEV gateway runs under Linux.")
     def test_process_lock_rejects_second_owner_and_releases_after_body_error(self):

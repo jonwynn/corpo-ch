@@ -1,6 +1,6 @@
 # Test the viewer from another network
 
-Version **1.7.0-beta.1**, unreleased. The accepted local pilot is unchanged. The chosen next target is the repository owner's separate DEV server. This guide does not establish that the branch is installed there or that outside access is ready.
+Version **1.7.0-beta.1**, unreleased. For the current local hosting approach, use [Share the local DEV viewer](match-viewer-local-sharing.md). The steps below are an alternative for a future owner-managed DEV server; they do not establish that the branch is installed there or outside access is ready.
 
 ## 1. Confirm the server with its owner
 

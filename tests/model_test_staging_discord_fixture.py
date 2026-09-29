@@ -10,7 +10,9 @@ from corpoch.dbot.models import Channels, Guilds
 from corpoch.match_actions import MatchActionError, StaleMatchAction, get_match_state_token
 from corpoch.models import Chart, DiscordToken, DiscordUser, Match
 from staging.configuration import StagingConfigurationError
-from staging.discord_fixture import apply_control_action, build_control_snapshot
+from staging.discord_fixture import (
+    apply_control_action, build_control_snapshot, grant_shared_referee, revoke_shared_referee,
+)
 from staging.viewer_fixture import prepare_fixture, validate_fixture
 
 
@@ -270,3 +272,76 @@ class StagingDiscordFixtureTests(TestCase):
                 chart_id=initial["charts"][0]["id"], player_id=initial["next_picker_id"],
             )
         self.assertIsNone(Match.objects.get().current_round.chart_id)
+
+    def test_shared_grant_creates_only_an_active_unprivileged_account_without_oauth(self):
+        grant_shared_referee(711, self.guild_id)
+        other = DiscordUser.objects.get(pk=711)
+        self.assertTrue(other.is_active)
+        self.assertFalse(other.is_staff or other.is_superuser or other.has_usable_password())
+        self.assertFalse(DiscordToken.objects.filter(user=other).exists())
+        self.assertTrue(Guilds.objects.get(pk=self.guild_id).referees.filter(pk=other.pk).exists())
+        grant_shared_referee(other.pk, self.guild_id)
+        self.assertEqual(DiscordUser.objects.filter(pk=other.pk).count(), 1)
+        self.assertEqual(validate_fixture().referee_id, self.account.pk)
+
+    def test_shared_referee_requires_explicit_mode_and_uses_same_state_token(self):
+        initial = self.snapshot()
+        grant_shared_referee(711, self.guild_id)
+        with self.assertRaises(StagingConfigurationError):
+            build_control_snapshot(711, self.guild_id)
+        shared = build_control_snapshot(711, self.guild_id, shared_referees=True)
+        self.assertEqual(shared, initial)
+        selected = apply_control_action(
+            "pick", initial["token"], 711, self.guild_id,
+            chart_id=initial["charts"][0]["id"], player_id=initial["next_picker_id"], shared_referees=True,
+        )
+        self.assertEqual(selected["current_chart"]["id"], initial["charts"][0]["id"])
+        with self.assertRaises(StaleMatchAction):
+            apply_control_action("undo", initial["token"], self.account.pk, self.guild_id)
+        self.assertEqual(validate_fixture().referee_id, self.account.pk)
+
+    def test_shared_referee_revocation_is_scoped_and_disabled_accounts_are_not_reactivated(self):
+        for account_id in (711, 712):
+            grant_shared_referee(account_id, self.guild_id)
+        revoke_shared_referee(711, self.guild_id)
+        with self.assertRaises(StagingConfigurationError):
+            build_control_snapshot(711, self.guild_id, shared_referees=True)
+        build_control_snapshot(712, self.guild_id, shared_referees=True)
+        self.snapshot()
+        DiscordUser.objects.filter(pk=712).update(is_active=False)
+        with self.assertRaises(StagingConfigurationError):
+            grant_shared_referee(712, self.guild_id)
+        with self.assertRaises(StagingConfigurationError):
+            build_control_snapshot(712, self.guild_id, shared_referees=True)
+        self.assertFalse(DiscordUser.objects.get(pk=712).is_active)
+
+    def test_shared_grants_reject_wrong_guild_invalid_identity_and_missing_owner_access(self):
+        for account_id, guild_id in ((711, 511), (True, self.guild_id), ("711", self.guild_id)):
+            with self.subTest(account_id=account_id, guild_id=guild_id):
+                with self.assertRaises(StagingConfigurationError):
+                    grant_shared_referee(account_id, guild_id)
+                with self.assertRaises(StagingConfigurationError):
+                    revoke_shared_referee(account_id, guild_id)
+        self.assertFalse(DiscordUser.objects.filter(pk=711).exists())
+        grant_shared_referee(711, self.guild_id)
+        revoke_shared_referee(self.account.pk, self.guild_id)
+        with self.assertRaises(StagingConfigurationError):
+            grant_shared_referee(712, self.guild_id)
+        with self.assertRaises(StagingConfigurationError):
+            build_control_snapshot(711, self.guild_id, shared_referees=True)
+        revoke_shared_referee(711, self.guild_id)
+        self.assertFalse(Guilds.objects.get(pk=self.guild_id).referees.exists())
+
+    def test_shared_referees_have_no_administrator_bypass_or_cross_guild_grant(self):
+        other = DiscordUser.objects.create(pk=711, is_active=True, is_staff=True, is_superuser=True)
+        initial = self.snapshot()
+        for options in ({"shared_referees": True}, {"shared_referees": "true"}):
+            with self.subTest(options=options), self.assertRaises(StagingConfigurationError):
+                build_control_snapshot(other.pk, self.guild_id, **options)
+        with self.assertRaises(StagingConfigurationError):
+            apply_control_action("undo", initial["token"], other.pk, self.guild_id, shared_referees=True)
+        grant_shared_referee(other.pk, self.guild_id)
+        with self.assertRaises(StagingConfigurationError):
+            build_control_snapshot(other.pk, 511, shared_referees=True)
+        other.refresh_from_db()
+        self.assertTrue(other.is_staff and other.is_superuser)
