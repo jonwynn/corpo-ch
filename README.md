@@ -15,6 +15,7 @@ This fork adds a read-only live match viewer for tournament staff on the existin
 - [Local Linux website: setup, Supervisor controls and login check](docs/match-viewer-staging-runtime.md)
 - [Accepted local DEV Discord pilot and manual checks](docs/match-viewer-discord-pilot.md#verified-local-checkpoint)
 - [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
+- [Outside-access testing: operator and remote tester steps](docs/match-viewer-outside-access.md)
 - [Changelog](CHANGELOG.md)
 
 The explicit CORP Cup profile uses four opening ban/save actions, higher-seed first pick and subsequent loser picks. The website and bot share validated recorded state; continuous in-song statistics have no verified data source. Native browser refresh retains the last valid result during temporary failures and rechecks staff access on every request.

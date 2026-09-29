@@ -34,6 +34,7 @@
 
 ### Changed
 
+- Added owner-hosted DEV outside-access instructions, including read-only runtime inspection, an anonymous HTTPS check, browser live-update tests and synchronized role-revocation checks. Server deployment commands remain dependent on confirmed host/configuration details; the guide identifies inherited debug parsing and the earlier development-server launch as items to resolve before public testing.
 - Recorded acceptance of the local DEV pilot's private controls, restart/resumed operation, narrow layouts, 200% zoom and Windows high contrast. Updated the README and current guides to separate this completed checkpoint from broader staff deployment and provider integration.
 - Added restart navigation and existing-destination recovery guidance to the local runtime guide. Returning users start the saved MySQL/website processes and DEV session without rerunning one-time database provisioning.
 - Recorded successful manual use of the restricted DEV Discord pilot, including target completion, finalization and reopening/undo. Updated the current guides to distinguish verified local behavior from deployment and full bot/provider checks.
