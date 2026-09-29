@@ -5,7 +5,7 @@
 ### Added
 
 - Optional local staff sharing for the synthetic DEV match: a separate loopback ASGI website behind a pinned temporary HTTPS origin, existing Discord sign-in, short-lived live-role checks and secure cookies. The bot accepts other approved human referees only in explicit shared mode, with private per-user controls and an Open viewer link. Owner-only defaults, match ownership and production settings remain unchanged.
-- PowerShell shared-viewer startup and a host/tester guide covering temporary tunnel setup, DEV OAuth callbacks, same-match coordination and shutdown. Automated coverage includes shared grants, permission failures, OAuth continuation, route isolation and web-server compatibility; real outside-browser acceptance remains pending.
+- PowerShell shared-viewer startup and a host/tester guide covering temporary tunnel setup, DEV OAuth callbacks, same-match coordination and shutdown. Automated coverage includes shared grants, permission failures, OAuth continuation, route isolation and web-server compatibility; second-account acceptance remains pending.
 - A native MySQL regression that renders one selected match before and after adding 100 unrelated populated matches. It checks unchanged query count, identical response content, read-only SQL and closed connections.
 - A foreground DEV Discord pilot for the existing synthetic sample. It reuses chart, winner, undo and finalization callbacks through detached controls, with fresh role checks, local ownership and state-token validation. Its private responses are restricted to the sample owner and configured DEV channel. The launcher registers one guild command without deleting other commands; it loads no production bot, broker, worker or export provider.
 - Copy-and-paste PowerShell checks and launch instructions for the DEV Discord pilot, including private control recovery and foreground shutdown.
@@ -36,6 +36,7 @@
 
 ### Changed
 
+- Recorded owner-account acceptance of public HTTPS Discord login and mobile live updates from real DEV bot actions. Updated the sharing guide, rollout status and README to retain separate-account, live role-revocation and competing-user checks as pending.
 - Added owner-hosted DEV outside-access instructions, including read-only runtime inspection, an anonymous HTTPS check, browser live-update tests and synchronized role-revocation checks. Server deployment commands remain dependent on confirmed host/configuration details; the guide identifies inherited debug parsing and the earlier development-server launch as items to resolve before public testing.
 - Recorded acceptance of the local DEV pilot's private controls, restart/resumed operation, narrow layouts, 200% zoom and Windows high contrast. Updated the README and current guides to separate this completed checkpoint from broader staff deployment and provider integration.
 - Added restart navigation and existing-destination recovery guidance to the local runtime guide. Returning users start the saved MySQL/website processes and DEV session without rerunning one-time database provisioning.

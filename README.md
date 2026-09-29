@@ -25,7 +25,7 @@ The local single-owner DEV pilot is accepted: real Discord login, picks/results,
 
 The local Linux environment runs the website and its separate MySQL database under Supervisor. Restricted DEV referee controls run in an explicitly started foreground session. Private configuration stays outside the repository, and production settings are not loaded. The guides include exact PowerShell start/stop commands. Ordinary bot startup, workers, screenshots and exports remain separate integration work.
 
-Optional local sharing adds a separate loopback website behind a temporary HTTPS tunnel. Approved DEV referees can invoke `/viewer-pilot` without website setup, then open the viewer through Discord sign-in. All testers use the same synthetic match. The default owner-only mode stays available; real outside-browser acceptance is still pending.
+Optional local sharing adds a separate loopback website behind a temporary HTTPS tunnel. Approved DEV referees can invoke `/viewer-pilot` without website setup, then open the viewer through Discord sign-in. All testers use the same synthetic match. The sample owner has verified public HTTPS login and mobile live updates from real DEV Discord actions. Testing with another Discord account, live role revocation and competing users remains pending. The default owner-only mode stays available.
 
 ## Links
 

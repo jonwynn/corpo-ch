@@ -10,7 +10,7 @@ Version **1.7.0-beta.1** is unreleased. The staff website viewer, CORP Cup actio
 | 4. Staff reader | Paginated selection, scoped GET pages/fragments, fresh account checks, chart redaction and shared history validation. |
 | 5. Refresh | One request at a time, cancellation, pinned player slots, preserved details, stale/error states and access-loss clearing. |
 | 6. Verification | Isolated and native Linux MySQL checks pass. The restricted local DEV flow, restart, private controls and listed visual/accessibility checks have passed manual review. Other environments need their own qualification. |
-| 7. Rollout | The single-owner synthetic local pilot is accepted. A broader DEV staff rollout needs a selected host/operator and multi-user access/load checks; no production deployment. Follow the [rollout checklist](match-viewer-rollout.md). |
+| 7. Rollout | The single-owner local pilot, public HTTPS login and mobile live updates from real DEV Discord actions are accepted. The [local sharing checkpoint](match-viewer-local-sharing.md#verified-sharing-checkpoint) lists remaining account, role-revocation and competing-control checks. Other deployments need separate qualification; no production deployment. |
 
 ## 1. Open PowerShell
 

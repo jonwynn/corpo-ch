@@ -2,7 +2,7 @@
 
 Version **1.7.0-beta.1** is unreleased. No production deployment has been performed. The single-account [synthetic local pilot](match-viewer-local-pilot.md) is accepted in the isolated WSL environment, including the [recorded manual checks](match-viewer-discord-pilot.md#verified-local-checkpoint). Broader staff rollout still requires the applicable checks below. The existing overlay remains the production fallback.
 
-The next checkpoint is [temporary local staff sharing](match-viewer-local-sharing.md): a separate loopback ASGI listener behind an HTTPS tunnel, existing Discord login, and fresh approved-role checks for the owned synthetic sample. Its commands preserve the original owner-only website and bot mode. Complete remote-browser, role-revocation and competing-control checks before accepting this mode. The accepted owner-only hands-on checks do not need repeating on the unchanged setup.
+The [temporary local sharing checkpoint](match-viewer-local-sharing.md#verified-sharing-checkpoint) has passed owner-account public HTTPS login and mobile live updates from real DEV Discord actions. It uses a separate loopback ASGI listener behind an HTTPS tunnel and preserves the original owner-only website and bot mode. The remaining staff checks are another approved Discord account, an account without access, live role revocation and competing controls. Accepted owner and mobile checks do not need repeating on the unchanged setup.
 
 The [owner-managed outside-access guide](match-viewer-outside-access.md) remains an alternative for a future separate server. Its deployment commands require confirmed server details; the local provisioner is not an upgrade command for that server.
 

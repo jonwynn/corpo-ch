@@ -103,6 +103,6 @@ Manual acceptance on 2026-09-28 covers the single-owner synthetic sample:
 
 These are local manual results, not certification of every browser, viewport or contrast theme. No precise viewport dimensions, browser version or contrast-theme name were recorded for the final review. They do not approve production deployment.
 
-The next stage is a separate DEV staff rollout: select its host and responsible operator, then verify multi-user access, role revocation, connection settings and load for that environment using the [rollout checklist](match-viewer-rollout.md). Preserve this sample as the accepted baseline; it remains restricted to its owner.
+The [local sharing checkpoint](match-viewer-local-sharing.md#verified-sharing-checkpoint) confirms owner-account public HTTPS login and mobile live updates from real DEV Discord controls. The commands in this guide retain owner-only access. Another approved Discord account, live role revocation and competing-user controls still require manual checks before broader staff acceptance. Other deployment environments need separate qualification through the [rollout checklist](match-viewer-rollout.md).
 
 Screenshot processing, Sheets exports and ordinary bot startup remain separate integration work. They are not required to display recorded picks and winners in this local viewer.

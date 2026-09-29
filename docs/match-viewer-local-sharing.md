@@ -117,9 +117,25 @@ Web membership results are cached for at most ten seconds after a successful che
 
 Cloudflare carries the HTTPS browser traffic. The runtime exposes only login, the fixed sample and its two viewer assets. The public hostname and forwarded HTTPS header must match; it binds only to loopback. Secure host-only cookies are separate from localhost cookies. Callback query strings are not logged by this runtime. The temporary URL is not an access credential.
 
-The earlier 12-query measurement covers the existing viewer read, not shared-mode membership and fixture checks. Shared throughput and end-to-end Internet latency are unmeasured. Start with two or three testers. Automated checks cannot certify the real tunnel's headers, Discord portal callback, client permissions or remote browser behavior; complete the manual checks above before treating outside access as accepted.
+The earlier 12-query measurement covers the existing viewer read, not shared-mode membership and fixture checks. Shared throughput and end-to-end Internet latency are unmeasured. Start with two or three testers. The owner-account HTTPS and mobile checks below are accepted; complete the remaining account, revocation and competing-control checks before expanding staff access.
 
 Implementation validation on 2026-09-29: 389 guarded application tests passed on Ubuntu; Windows passed 388 with one expected Linux-only skip. This includes 40 new shared bot/web checks. The 171-test foundation suite passed with its platform skips. Both PowerShell helpers parsed, and their check modes passed against the prepared WSL database without connecting to Discord or opening a tunnel. The temporarily started database was returned to its stopped state. Independent review corrected web-server argument compatibility and malformed-membership error classification before this checkpoint.
+
+## Verified sharing checkpoint
+
+Manual acceptance on 2026-09-29 covers the sample owner's public HTTPS Discord login and mobile viewing. The owner confirmed that the mobile viewer updated live as actions were entered through the DEV bot in the configured channel. This verifies the real Discord-to-database-to-HTTPS-viewer flow for that account.
+
+| Check | Result |
+|---|---|
+| Owner login through the temporary HTTPS address | Passed, reported by the owner. |
+| Mobile viewer updates from real DEV Discord actions | Passed, reported by the owner. |
+| Public homepage/assets, unsigned-in match denial, excluded routes and login redirect | Passed through the public Cloudflare route from the hosting PC; this probe was not an independent-network test. |
+| Shared-access/action regressions and browser refresh behavior | Focused rerun: 77 application tests passed, one Linux-only test skipped on Windows; all 12 refresh tests passed. |
+| Another approved Discord account, denied account, live role removal and competing real users | Pending hands-on testing; isolated coverage is not live acceptance. |
+
+The accepted scope remains one synthetic match and one real Discord account. Production deployment, normal tournament setup, screenshots and exports remain outside this checkpoint.
+
+## Troubleshooting
 
 | Symptom | Check |
 |---|---|
