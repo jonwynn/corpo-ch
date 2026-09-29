@@ -213,9 +213,9 @@ Browser and scheduled renewal coordinate on the same token row. Renewal holds th
 
 ## Current checkpoint and remaining service gates
 
-The [web-only launcher](match-viewer-staging-runtime.md) uses explicit private settings, a generated local MySQL schema on port 3308, private media storage, fresh session/encryption keys and the development application's OAuth client secret. The website listens on `127.0.0.1:8766`. All viewer gates remain off. The launcher does not import production settings, launch the bot, contact a Redis broker, run scheduled jobs or expose export routes. Signing in creates or updates the local account and session without granting staff privileges.
+The [web-only launcher](match-viewer-staging-runtime.md) uses explicit private settings, a generated local MySQL schema on port 3308, private media storage, fresh session/encryption keys and the development application's OAuth client secret. The website listens on `127.0.0.1:8766`. Ordinary login mode keeps viewer gates off; explicit sample modes enable only the validated local pilot. The web launcher does not import production settings, launch the bot, contact a Redis broker, run scheduled jobs or expose export routes. Signing in creates or updates the local account and session without granting staff privileges.
 
-The next manual check is the real browser consent and callback flow. Credential metadata checks and isolated tests do not prove `BOT_SECRET` acceptance, callback registration, browser-session recovery or account permissions. Register exactly `http://127.0.0.1:8766/auth` in the DEV application, then follow the runtime guide. Do not share callback URLs or cookie values when reporting a failure.
+Real browser consent and callback acceptance are verified for the local setup. Its single-owner sample and separately launched restricted DEV Discord controls have also passed the [recorded manual checks](match-viewer-discord-pilot.md#verified-local-checkpoint). A new environment still needs its own consent/callback and account-access checks; credential metadata and isolated tests do not establish those results. Its local callback must be registered exactly as `http://127.0.0.1:8766/auth` when using this runtime. Do not share callback URLs or cookie values when reporting a failure.
 
 Before the bot and export stages, complete these remaining gates:
 

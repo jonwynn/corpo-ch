@@ -34,8 +34,9 @@
 
 ### Changed
 
+- Recorded acceptance of the local DEV pilot's private controls, restart/resumed operation, narrow layouts, 200% zoom and Windows high contrast. Updated the README and current guides to separate this completed checkpoint from broader staff deployment and provider integration.
 - Added restart navigation and existing-destination recovery guidance to the local runtime guide. Returning users start the saved MySQL/website processes and DEV session without rerunning one-time database provisioning.
-- Recorded successful manual use of the restricted DEV Discord pilot, including target completion, finalization and reopening/undo. Updated the current guides to distinguish verified local behavior from pending accessibility, deployment and full bot/provider checks.
+- Recorded successful manual use of the restricted DEV Discord pilot, including target completion, finalization and reopening/undo. Updated the current guides to distinguish verified local behavior from deployment and full bot/provider checks.
 - Fixed local staging pages hanging behind an idle browser connection. The local server now handles connections concurrently with Django's per-thread database cleanup and closes inactive sockets after ten seconds. Supervisor's `RUNNING` state indicates process health; it does not by itself confirm that HTTP requests are responding.
 - Application consumers now use the selected Django settings instead of importing the deployment settings directly. Production profile synchronization remains enabled by default; the local login checkpoint explicitly disables its background task.
 - The isolated test guard now resolves Linux directory descriptors during temporary-file cleanup and related file operations. Regression checks cover valid cleanup, outside paths, moved/deleted descriptors and symbolic-link escapes.
@@ -68,7 +69,7 @@
 
 ### Delivery status
 
-The local viewer's desktop appearance is accepted. On 2026-09-28, manual DEV-channel testing confirmed the restricted Discord pilot works, including reaching the target, finalizing the result and reopening/undoing the completed match. Its 49 isolated fixture, callback and gateway checks and no-connection preflight also pass. Explicit private-response visibility and shutdown/restart checks remain pending, along with narrow layouts, 200% zoom and operating-system high contrast. Full bot startup, screenshots and exports remain separate integration work.
+The single-owner local viewer pilot is accepted. Manual testing on 2026-09-28 confirmed real DEV-channel operation through the win target, finalization and reopening/undo; restart/resumed controls; private Discord responses; and desktop/narrow layouts, 200% zoom and Windows high contrast. Its 49 isolated fixture, callback and gateway checks and no-connection preflight also pass. Final manual browser/viewport/theme details were not recorded, so the acceptance applies to the tested local setup. Broader staff access, ordinary bot startup, screenshots and exports remain separate integration work.
 
 The backend and viewer milestones are implemented but unreleased. Current application validation discovers **349 tests** using the real SQLite migration chain through `corpoch.0030` and `dbot.0006`: Windows passes 348 with one expected Linux-only skip in 34.606 seconds; Linux passes all 349 in 39.428 seconds. Foundation validation discovers **171 tests**: 148 execute with 23 expected skips on Windows; 159 execute with 12 expected skips on Linux. Coverage includes 20 DEV referee-metadata checks and 14 owned sample-fixture tests. Fresh-process staging smoke checks pass on both platforms, and the refresh controller passes 12 Node tests. The sample helper's inspection, pick and result commands work in Windows PowerShell 5.1; all 28 current guide blocks parse there, and 32 isolated MySQL wrapper checks pass.
 
@@ -76,7 +77,7 @@ The Ubuntu 24.04 checkpoint uses Python 3.12.3, Django 6.0.8, MySQL 8.0.46/InnoD
 
 The idle-connection correction passes a real loopback HTTP regression on Windows and Linux, covering concurrent requests, idle and incomplete-header timeouts, private error output, per-thread database cleanup and server shutdown. All 37 focused web/OAuth tests also pass on both platforms. After restarting only the local website, the home page responds and the previously stalled browser tab renders normally. This does not establish real Discord sign-in acceptance.
 
-A user-run verification on `2e32fae` confirmed 190 application tests, 57 executed foundation tests with 9 explicit skips, 12 Node controller tests and successful preview startup. General preview behavior was reported as working as intended; detailed accessibility acceptance remains pending.
+A user-run verification on `2e32fae` confirmed 190 application tests, 57 executed foundation tests with 9 explicit skips, 12 Node controller tests and successful preview startup. That earlier report covered general preview behavior; later local manual acceptance is recorded above.
 
 The original five native MySQL checks passed on MySQL 8.4.11/InnoDB with mysqlclient 2.3.0. The PowerShell 5.1 wrapper completed startup, migrations, checks, database removal and shutdown in 23.083 seconds with normal profile loading. Occupied-port refusal, cleanup after a simulated checker failure and environment restoration also pass.
 
@@ -84,4 +85,4 @@ The prepared instance was relocated outside AppData after confirming Windows app
 
 The earlier eight-check native suite passed, including OAuth state consumption and token/callback concurrency with mocked Discord responses. The latest rerun after the role migration took 1.492 seconds for test bodies; the disposable database was removed and the local server stopped. Referee-specific concurrent role edits have isolated behavioral tests but no native MySQL overlap test. Private inventory validation and read-only service verification remain separate from runtime startup and export acceptance.
 
-Other deployments still require their own MySQL/configuration/load checks. Real bot/provider execution, old encrypted-data conversion, operating-system high contrast and the remaining detailed visual cases remain rollout gates. Viewer switches remain off by default; only the explicitly selected local synthetic pilot is enabled. No production deployment has been performed.
+Other deployments still require their own MySQL/configuration/load and visual/accessibility checks. Ordinary bot/provider execution and old encrypted-data conversion remain separate integration gates. Viewer switches remain off by default; only the accepted local synthetic pilot is enabled. No production deployment has been performed.

@@ -13,14 +13,15 @@ This fork adds a read-only live match viewer for tournament staff on the existin
 - [Beginner PowerShell guide: local checks and preview](docs/match-viewer-development.md)
 - [Private development credentials and test-service preparation](docs/match-viewer-staging.md)
 - [Local Linux website: setup, Supervisor controls and login check](docs/match-viewer-staging-runtime.md)
+- [Accepted local DEV Discord pilot and manual checks](docs/match-viewer-discord-pilot.md#verified-local-checkpoint)
 - [Staged rollout and rollback checklist](docs/match-viewer-rollout.md)
 - [Changelog](CHANGELOG.md)
 
 The explicit CORP Cup profile uses four opening ban/save actions, higher-seed first pick and subsequent loser picks. The website and bot share validated recorded state; continuous in-song statistics have no verified data source. Native browser refresh retains the last valid result during temporary failures and rechecks staff access on every request.
 
-The implementation has isolated tests and a local fixture preview. Eight native MySQL checks, including OAuth concurrency, also pass on the prepared local test instance. It is **not deployed**. Viewer, polling and MySQL verification switches default off. Deployment-specific database checks, live OAuth/Discord/provider checks and final human visual acceptance remain rollout gates. Existing overlay and non-CORP rule paths remain available.
+The local single-owner DEV pilot is accepted: real Discord login, picks/results, finalization, reopening/undo, restart, private controls, narrow layouts, 200% zoom and Windows high contrast have passed manual review. Isolated tests, browser checks and fourteen native Linux MySQL checks provide additional coverage. It is **not deployed to production**. Viewer, polling and MySQL verification switches default off outside the explicit local pilot. Broader staff access, deployment-specific database/load checks and ordinary bot/provider integration remain separate work. Existing overlay and non-CORP rule paths remain available.
 
-The first Linux staging checkpoint runs only the local website and a fresh MySQL database under Supervisor. Private configuration stays outside the repository, and production settings are not loaded. The prepared-instance guide includes exact PowerShell start/stop commands and the manual Discord login check. Bot, worker and export testing follow separately.
+The local Linux environment runs the website and its separate MySQL database under Supervisor. Restricted DEV referee controls run in an explicitly started foreground session. Private configuration stays outside the repository, and production settings are not loaded. The guides include exact PowerShell start/stop commands. Ordinary bot startup, workers, screenshots and exports remain separate integration work.
 
 ## Links
 

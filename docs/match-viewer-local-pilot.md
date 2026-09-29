@@ -2,7 +2,7 @@
 
 Version **1.7.0-beta.1**, unreleased. Complete the [local login setup](match-viewer-staging-runtime.md) first. These commands operate the prepared WSL sample; they do not provision a fresh clone.
 
-The current desktop appearance has been accepted. The next integration check is the [restricted DEV Discord session](match-viewer-discord-pilot.md), which uses the same sample and viewer. Detailed narrow-screen, zoom and high-contrast review remains separate.
+The local sample and [restricted DEV Discord session](match-viewer-discord-pilot.md#verified-local-checkpoint) are accepted, including restart/resumed controls, private responses, narrow layouts, 200% zoom and Windows high contrast. The commands below remain available for inspecting the sample and making local test actions.
 
 The sample uses the real MySQL database, match actions, staff access checks and viewer. Its players and charts are fictional. The website remains read-only. Picks and results below change only `local-viewer-pilot` in the isolated staging schema. No Discord messages, game server, background worker or spreadsheet exports are involved.
 
@@ -81,4 +81,4 @@ After native MySQL verification and successful `inspect`, change only the local 
 
 Rollback changes that web command back to `serve` and reloads the same local group. It disables viewer access without removing OAuth sessions, fixture history, permissions or migrations. `revoke` separately removes only the fixture owner's local referee grant. Existing production configuration and all ordinary viewer defaults remain unchanged.
 
-Single-request query counts and durations printed by `inspect` describe this sample only. Broader concurrency, unrelated-match-volume measurements under deployment settings, multi-user role synchronization, real bot actions, uploads, exports and operating-system accessibility acceptance remain later rollout checks.
+Single-request query counts and durations printed by `inspect` describe this sample only. Native tests also verify stable query count and payload with unrelated matches. Broader concurrency and connection settings, multi-user role synchronization, ordinary bot operation, uploads and exports need separate qualification. Local accessibility acceptance does not certify other browsers or operating-system configurations.

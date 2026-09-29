@@ -1,6 +1,6 @@
 # Test Discord controls against the local viewer
 
-Version **1.7.0-beta.1**, unreleased. Complete the [local sample checkpoint](match-viewer-local-pilot.md) first. The sample layout has been accepted at the current desktop presentation. Narrow layouts, 200% zoom and operating-system high contrast still need individual review.
+Version **1.7.0-beta.1**, unreleased. Complete the [local sample checkpoint](match-viewer-local-pilot.md) first. The local pilot has passed manual review of desktop and narrow layouts, 200% zoom, Windows high contrast and private Discord controls. See the [verified checkpoint](#verified-local-checkpoint) for its scope.
 
 This checkpoint lets the signed-in sample owner pick charts and record winners in Discord while watching the existing website update. It uses the existing referee callbacks and match writers. The local database still contains the same fictional players and songs. Its opening bans remain fixed; it does not reset prior testing.
 
@@ -88,12 +88,19 @@ The ordinary web runtime remains unchanged. Discord message IDs stay in memory; 
 
 ### Verified local checkpoint
 
-On 2026-09-28, manual testing in the actual DEV channel confirmed that the pilot works, including reaching the win target, finalizing the result, and reopening/undoing the completed match. The current desktop appearance was accepted separately. These results cover the single-owner synthetic sample; they do not approve production deployment.
+Manual acceptance on 2026-09-28 covers the single-owner synthetic sample:
 
-The remaining manual checks are:
+| Check | Result |
+|---|---|
+| DEV-channel controls and website updates | Passed in the local pilot. |
+| Win target, finalization and reopening/undo | Passed in the actual DEV channel. |
+| Restart of the prepared setup and resumed controls | Passed without repeating provisioning. |
+| Private Discord response visibility | Confirmed during hands-on review. |
+| Desktop and narrow browser layouts | Accepted in the tested local environment. |
+| 200% browser zoom and Windows high contrast | Reported working during hands-on review. |
 
-- Confirm private-response visibility and clean Ctrl+C shutdown/restart explicitly.
-- Review narrow layouts, 200% zoom and operating-system high contrast.
-- Before expanding the pilot, verify the intended deployment's access rules, connection settings and viewer load.
+These are local manual results, not certification of every browser, viewport or contrast theme. No precise viewport dimensions, browser version or contrast-theme name were recorded for the final review. They do not approve production deployment.
+
+The next stage is a separate DEV staff rollout: select its host and responsible operator, then verify multi-user access, role revocation, connection settings and load for that environment using the [rollout checklist](match-viewer-rollout.md). Preserve this sample as the accepted baseline; it remains restricted to its owner.
 
 Screenshot processing, Sheets exports and ordinary bot startup remain separate integration work. They are not required to display recorded picks and winners in this local viewer.
